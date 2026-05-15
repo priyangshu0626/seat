@@ -133,9 +133,10 @@ class SeatOptimizer:
         day_index: int,
         pair_counts: dict[str, int],
         seat_counts: np.ndarray,
-        last_arrangement: Optional[list[int]],
+        last_arrangement: Optional[list[int] | np.ndarray],
         use_planning: bool = True,
         generate_explanation: bool = False,
+        recent_arrangements: Optional[list[list[int]]] = None,
     ) -> tuple[np.ndarray, float, dict]:
         """
         Find the optimal arrangement for a single day.
@@ -156,6 +157,7 @@ class SeatOptimizer:
             last_arrangement: previous day's arrangement, or None
             use_planning: whether to use Monte Carlo lookahead
             generate_explanation: whether to generate AI explanation
+            recent_arrangements: history of past arrangements
 
         Returns:
             (arrangement, score, profiling_dict)
@@ -208,7 +210,8 @@ class SeatOptimizer:
                     sol_arr = np.array(sol, dtype=np.int32)
                     sc = score_arrangement(
                         sol_arr, graph, seat_counts, last_arrangement,
-                        day_index, self.config.weights, n
+                        day_index, self.config.weights, n,
+                        recent_arrangements=recent_arrangements,
                     )
                     scored.append((sol, sc))
 
@@ -273,6 +276,7 @@ class SeatOptimizer:
                     beam_width=self.config.beam_width,
                     lookahead_depth=min(self.config.lookahead_depth, 7),
                     num_rollouts=min(self.config.monte_carlo_samples, 10),
+                    recent_arrangements=recent_arrangements,
                 )
                 arrangement = np.array(arr_list, dtype=np.int32)
                 score = sc
@@ -280,7 +284,8 @@ class SeatOptimizer:
             else:
                 arr_list, sc, prof = greedy_optimize(
                     graph, seat_counts, last_arrangement, self.all_perms,
-                    self.config, day_index
+                    self.config, day_index,
+                    recent_arrangements=recent_arrangements,
                 )
                 arrangement = np.array(arr_list, dtype=np.int32)
                 score = sc
@@ -333,14 +338,11 @@ class SeatOptimizer:
         num_days: int,
         initial_pair_counts: Optional[dict[str, int]] = None,
         initial_seat_counts: Optional[np.ndarray] = None,
-        initial_last_row: Optional[np.ndarray | list[int]] = None,
+        initial_last_row: Optional[list[int]] = None,
         use_planning: bool = True,
+        recent_arrangements: Optional[list[list[int]]] = None,
     ) -> list[tuple[np.ndarray, float, dict]]:
         """
-        Generate a multi-day schedule.
-
-        Builds the schedule day-by-day, propagating state between days.
-        Each day uses the full optimization pipeline (CP-SAT + planning).
 
         For the first few days of a bulk request, planning is reduced
         to maintain sub-200ms total latency for 5-person groups.
@@ -363,6 +365,9 @@ class SeatOptimizer:
             else np.zeros((self.config.num_people, self.config.num_seats), dtype=np.int32)
         )
         last_row = list(initial_last_row) if initial_last_row is not None else None
+        
+        # Maintain a sliding window of recent history (e.g. last 14 days)
+        history = list(recent_arrangements) if recent_arrangements else []
 
         results = []
 
@@ -376,6 +381,7 @@ class SeatOptimizer:
             arrangement, score, profiling = self.optimize_single_day(
                 day_index, pair_counts, seat_counts, last_row,
                 use_planning=day_planning,
+                recent_arrangements=history,
             )
 
             results.append((arrangement, score, profiling))
@@ -385,6 +391,11 @@ class SeatOptimizer:
             update_state(arrangement, graph, seat_counts)
             pair_counts = graph.pair_counts
             last_row = arrangement.tolist()
+            
+            # Update history sliding window
+            history.append(last_row)
+            if len(history) > 14:
+                history.pop(0)
 
         return results
 

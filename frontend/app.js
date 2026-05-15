@@ -132,6 +132,7 @@ async function buildScheduleFromBackend(upToDayIndex) {
         initial_pair_counts: schedulePairCounts,
         initial_seat_counts: scheduleSeatCounts,
         initial_last_row: scheduleList.length > 0 ? scheduleList[scheduleList.length - 1] : null,
+        recent_arrangements: scheduleList.slice(-14),
       }),
     });
 

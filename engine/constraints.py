@@ -240,12 +240,39 @@ def filter_no_repeat_edges(
     return candidates[valid_mask]
 
 
+def filter_no_exact_repeats(
+    candidates: np.ndarray,
+    recent_arrangements: Optional[list[list[int]]] = None,
+) -> np.ndarray:
+    """
+    HARD CONSTRAINT: No Exact Arrangement Repetition.
+    
+    Prevents the engine from repeating an exact seating arrangement from
+    the recent past, breaking infinite loops when N=5.
+    """
+    if not recent_arrangements:
+        return candidates
+        
+    recent_tuples = {tuple(int(x) for x in arr) for arr in recent_arrangements}
+    
+    valid = []
+    for i in range(len(candidates)):
+        cand_tuple = tuple(int(x) for x in candidates[i])
+        if cand_tuple not in recent_tuples:
+            valid.append(i)
+            
+    if len(valid) == 0:
+        return candidates  # Relaxation
+        
+    return candidates[np.array(valid)]
+
 def apply_all_hard_constraints(
     permutations: np.ndarray,
     seat_counts: np.ndarray,
     last_arrangement: Optional[np.ndarray | list[int]],
     num_people: int,
     num_seats: int,
+    recent_arrangements: Optional[list[list[int]]] = None,
 ) -> np.ndarray:
     """
     Apply ALL hard constraints in sequence with automatic relaxation.
@@ -277,7 +304,12 @@ def apply_all_hard_constraints(
     min_per_seat = compute_min_per_seat(seat_counts, num_people, num_seats)
     candidates = filter_seat_balanced_legacy(permutations, seat_counts, min_per_seat)
 
-    # 2. No edge repetition
+    # 2. No exact repeats from history
+    filtered = filter_no_exact_repeats(candidates, recent_arrangements)
+    if len(filtered) > 0:
+        candidates = filtered
+
+    # 3. No edge repetition
     filtered = filter_no_repeat_edges(candidates, last_arrangement)
     if len(filtered) > 0:
         candidates = filtered
@@ -332,29 +364,21 @@ if HAS_ORTOOLS:
 
 
 def build_cpsat_model(
-    config: EngineConfig,
-    graph: PairInteractionGraph,
+    config: "EngineConfig",
+    graph: "PairInteractionGraph",
     seat_counts: np.ndarray,
-    last_arrangement: Optional[list[int]],
+    last_arrangement: Optional[list[int] | np.ndarray],
     day_index: int,
-):
+    recent_arrangements: Optional[list[list[int]]] = None,
+) -> tuple["cp_model.CpModel", list["cp_model.IntVar"], dict]:
     """
     Build the CP-SAT constraint programming model.
-
-    Returns None if OR-Tools is not available.
     """
-    if not HAS_ORTOOLS:
-        return None, None, None
-
     model = cp_model.CpModel()
     n = config.num_people
     num_seats = config.num_seats
-    weights = config.weights
 
-    # Decision variables
-    seat_vars = [model.NewIntVar(0, n - 1, f"seat_{s}") for s in range(num_seats)]
-
-    # HARD: AllDifferent (permutation)
+    seat_vars = [model.NewIntVar(0, n - 1, f"seat_{i}") for i in range(num_seats)]
     model.AddAllDifferent(seat_vars)
 
     # HARD: Seat balance
@@ -390,6 +414,11 @@ def build_cpsat_model(
                     [(a, b), (b, a)]
                 )
 
+    # HARD: No exact repeats from history
+    if recent_arrangements:
+        for arr in recent_arrangements:
+            model.AddForbiddenAssignments(seat_vars, [tuple(int(x) for x in arr)])
+
     # SOFT: Edge fairness
     cost_terms = []
     pair_counts = graph.pair_counts
@@ -406,12 +435,12 @@ def build_cpsat_model(
             is_left = model.NewBoolVar(f"edge_l_{p}")
             model.Add(seat_vars[0] == p).OnlyEnforceIf(is_left)
             model.Add(seat_vars[0] != p).OnlyEnforceIf(is_left.Not())
-            cost_terms.append((is_left, edge_excess * weights.edge_imbalance_penalty))
+            cost_terms.append((is_left, edge_excess * config.weights.edge_imbalance_penalty))
 
             is_right = model.NewBoolVar(f"edge_r_{p}")
             model.Add(seat_vars[-1] == p).OnlyEnforceIf(is_right)
             model.Add(seat_vars[-1] != p).OnlyEnforceIf(is_right.Not())
-            cost_terms.append((is_right, edge_excess * weights.edge_imbalance_penalty))
+            cost_terms.append((is_right, edge_excess * config.weights.edge_imbalance_penalty))
 
     if cost_terms:
         total_cost = model.NewIntVar(-10_000_000, 100_000_000, "total_cost")

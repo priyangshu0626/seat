@@ -112,6 +112,7 @@ def score_arrangement(
     day_index: int,
     weights: OptimizerWeights,
     num_people: int,
+    recent_arrangements: Optional[list[list[int]]] = None,
 ) -> float:
     """
     Compute the composite score for a single candidate arrangement.
@@ -125,6 +126,7 @@ def score_arrangement(
     3. EDGE FAIRNESS — prefer edge assignments for under-served people
     4. ENTROPY BONUS — reward arrangements that increase overall entropy
     5. DETERMINISTIC TIEBREAKER — hash-based for reproducibility
+    6. EXACT REPEAT AVOIDANCE — huge penalty for repeating recent arrangements
 
     Args:
         arrangement: candidate seat assignment
@@ -134,6 +136,7 @@ def score_arrangement(
         day_index: 0-based day index
         weights: scoring weight configuration
         num_people: number of people
+        recent_arrangements: history of arrangements to avoid repeating
 
     Returns:
         Composite score (higher = better)
@@ -180,6 +183,14 @@ def score_arrangement(
             score -= weights.same_edge_penalty
         if curr_arr[-1] == last_arr[0] or curr_arr[-1] == last_arr[-1]:
             score -= weights.same_edge_penalty
+
+    # ── 2b. EXACT REPEAT AVOIDANCE ──
+    if recent_arrangements:
+        curr_tuple = tuple(int(x) for x in arrangement)
+        for recent_arr in recent_arrangements:
+            if curr_tuple == tuple(int(x) for x in recent_arr):
+                score -= weights.exact_repeat_penalty
+                break  # Only penalize once even if it appears multiple times
 
     # ── 3. EDGE FAIRNESS ──
     min_edge = float("inf")

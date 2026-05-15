@@ -82,6 +82,10 @@ class OptimizerWeights(BaseModel):
         default=100000,
         description="Cost for the same person on an edge as yesterday"
     )
+    exact_repeat_penalty: int = Field(
+        default=2000000,
+        description="Cost for repeating an exact arrangement from the recent past"
+    )
 
     # ── Edge fairness ──
     edge_imbalance_penalty: int = Field(
@@ -200,7 +204,10 @@ class GenerateRequest(BaseModel):
         default=None,
         description="Previous day's arrangement, or null for day 0"
     )
-
+    recent_arrangements: list[list[int]] = Field(
+        default_factory=list,
+        description="History of recent arrangements to avoid exact repetitions"
+    )
 
 class PairGraphEdge(BaseModel):
     """Single edge in the pair interaction graph."""
@@ -244,7 +251,7 @@ class BulkGenerateRequest(BaseModel):
     initial_pair_counts: dict[str, int] = Field(default_factory=dict)
     initial_seat_counts: list[list[int]] = Field(default_factory=list)
     initial_last_row: Optional[list[int]] = Field(default=None)
-
+    recent_arrangements: list[list[int]] = Field(default_factory=list)
 
 class BulkDayResult(BaseModel):
     """Result for a single day within a bulk generation."""

@@ -177,11 +177,15 @@ async def generate_arrangement(req: GenerateRequest):
         last_row = req.last_row
 
         # Run the optimization pipeline
-        arrangement, score, profiling = optimizer.optimize_single_day(
-            req.day_index, pair_counts, seat_counts, last_row,
-            use_planning=True,
-            generate_explanation=True,
-        )
+        try:
+            arrangement, score, profiling = optimizer.optimize_single_day(
+                req.day_index, pair_counts, seat_counts, last_row,
+                use_planning=True,
+                generate_explanation=True,
+                recent_arrangements=req.recent_arrangements,
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Optimization failed: {str(e)}")
 
         # Build pair interaction graph for response
         graph = PairInteractionGraph(config, pair_counts)
@@ -246,6 +250,7 @@ async def generate_bulk(req: BulkGenerateRequest):
             initial_pair_counts=pair_counts,
             initial_seat_counts=seat_counts,
             initial_last_row=last_row,
+            recent_arrangements=req.recent_arrangements,
         )
 
         running_pair_counts = dict(pair_counts)

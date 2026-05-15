@@ -260,6 +260,7 @@ def beam_search_with_rollouts(
     lookahead_depth: int = 7,
     num_rollouts: int = 10,
     seed: int = 42,
+    recent_arrangements: Optional[list[list[int]]] = None,
 ) -> tuple[list[int], float, dict]:
     """
     Beam search with Monte Carlo rollout evaluation.
@@ -284,6 +285,7 @@ def beam_search_with_rollouts(
         lookahead_depth: planning horizon in days
         num_rollouts: Monte Carlo samples per candidate
         seed: random seed for reproducibility
+        recent_arrangements: history of past arrangements
 
     Returns:
         (best_arrangement, best_score, profiling_dict)
@@ -296,14 +298,16 @@ def beam_search_with_rollouts(
 
     # ── Step 1: Get valid candidates (all hard constraints) ──
     candidates = apply_all_hard_constraints(
-        all_perms, seat_counts, last_arrangement, n, num_seats
+        all_perms, seat_counts, last_arrangement, n, num_seats,
+        recent_arrangements=recent_arrangements,
     )
 
     # ── Step 2: Score today's candidates (greedy) ──
     today_scores = np.array([
         score_arrangement(
             cand, graph, seat_counts, last_arrangement,
-            day_index, config.weights, n
+            day_index, config.weights, n,
+            recent_arrangements=recent_arrangements,
         )
         for cand in candidates
     ])
@@ -383,6 +387,7 @@ def greedy_optimize(
     all_perms: np.ndarray,
     config: EngineConfig,
     day_index: int,
+    recent_arrangements: Optional[list[list[int]]] = None,
 ) -> tuple[list[int], float, dict]:
     """
     Fast greedy optimization — evaluate all valid candidates, pick the best.
@@ -399,6 +404,7 @@ def greedy_optimize(
         all_perms: precomputed permutations
         config: engine config
         day_index: current day index
+        recent_arrangements: history of past arrangements
 
     Returns:
         (best_arrangement, best_score, profiling_dict)
@@ -409,15 +415,20 @@ def greedy_optimize(
 
     # Apply ALL hard constraints (seat balance + repetition avoidance)
     candidates = apply_all_hard_constraints(
-        all_perms, seat_counts, last_arrangement, n, num_seats
+        all_perms, seat_counts, last_arrangement, n, num_seats,
+        recent_arrangements=recent_arrangements,
     )
+
+    if len(candidates) == 0:
+        candidates = all_perms
 
     t_filter = time.perf_counter()
 
     scores = np.array([
         score_arrangement(
             cand, graph, seat_counts, last_arrangement,
-            day_index, config.weights, n
+            day_index, config.weights, n,
+            recent_arrangements=recent_arrangements,
         )
         for cand in candidates
     ])
