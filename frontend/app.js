@@ -152,133 +152,11 @@ async function buildScheduleFromBackend(upToDayIndex) {
       });
     }
   } catch (err) {
-    console.error('Backend API error, falling back to local engine:', err);
-    buildScheduleLocal(upToDayIndex);
+    console.error('Backend API error. Cannot generate schedule:', err);
+    alert('CRITICAL: Backend engine unreachable. Please ensure the Python server is running.');
   }
 }
 
-// Local fallback engine — hardened with exact-repeat avoidance matching backend
-function buildScheduleLocal(upToDayIndex) {
-  if (scheduleList.length > upToDayIndex) return;
-  const N = PEOPLE.length;
-  const ALL_PERMS = (function gen(arr) {
-    if (arr.length === 1) return [arr];
-    const r = [];
-    arr.forEach((n, i) => {
-      gen(arr.slice(0, i).concat(arr.slice(i + 1))).forEach(p => r.push([n, ...p]));
-    });
-    return r;
-  })([0, 1, 2, 3, 4]);
-
-  let seatCounts = scheduleSeatCounts.map(r => [...r]);
-  let pairCounts = { ...schedulePairCounts };
-  let prevRow = scheduleList.length > 0 ? scheduleList[scheduleList.length - 1] : null;
-
-  // Build a set of recent arrangements for exact-repeat hard filtering
-  const recentWindow = 14;
-  let recentSet = new Set(
-    scheduleList.slice(-recentWindow).map(a => a.join(','))
-  );
-
-  for (let day = scheduleList.length; day <= upToDayIndex; day++) {
-    // ── HARD CONSTRAINT 1: Seat balance (Latin-square) ──
-    const minPerSeat = [];
-    for (let s = 0; s < N; s++) {
-      let min = Infinity;
-      for (let p = 0; p < N; p++) { if (seatCounts[p][s] < min) min = seatCounts[p][s]; }
-      minPerSeat.push(min);
-    }
-    let candidates = ALL_PERMS.filter(perm => {
-      for (let s = 0; s < N; s++) { if (seatCounts[perm[s]][s] > minPerSeat[s]) return false; }
-      return true;
-    });
-    if (candidates.length === 0) candidates = [...ALL_PERMS];
-
-    // ── HARD CONSTRAINT 2: No exact repeat from recent history ──
-    let filtered = candidates.filter(p => !recentSet.has(p.join(',')));
-    if (filtered.length > 0) candidates = filtered;
-
-    // ── HARD CONSTRAINT 3: No edge repetition from yesterday ──
-    if (prevRow) {
-      filtered = candidates.filter(p =>
-        p[0] !== prevRow[0] && p[0] !== prevRow[N - 1] &&
-        p[N - 1] !== prevRow[0] && p[N - 1] !== prevRow[N - 1]
-      );
-      if (filtered.length > 0) candidates = filtered;
-    }
-
-    // ── HARD CONSTRAINT 4: No same-seat repetition from yesterday ──
-    if (prevRow) {
-      filtered = candidates.filter(p => {
-        for (let s = 0; s < N; s++) { if (p[s] === prevRow[s]) return false; }
-        return true;
-      });
-      if (filtered.length > 0) candidates = filtered;
-    }
-
-    // ── HARD CONSTRAINT 5: No pair repetition from yesterday ──
-    if (prevRow) {
-      const prevPairs = new Set(getPairs(prevRow));
-      filtered = candidates.filter(p => !getPairs(p).some(pp => prevPairs.has(pp)));
-      if (filtered.length > 0) candidates = filtered;
-    }
-
-    // ── SOFT SCORING: rank remaining candidates ──
-    let bestScore = -Infinity, bestPerm = candidates[0];
-    candidates.forEach(perm => {
-      let score = 0;
-      const pairs = getPairs(perm);
-      let minPC = Infinity;
-      for (const k in pairCounts) { if (pairCounts[k] < minPC) minPC = pairCounts[k]; }
-      if (minPC === Infinity) minPC = 0;
-      pairs.forEach(p => {
-        const c = pairCounts[p] || 0;
-        score -= (c - minPC) * 10000;
-        if (c === 0) score += 5000;
-        if (c === minPC) score += 2000;
-      });
-      if (prevRow) {
-        const pp = new Set(getPairs(prevRow));
-        pairs.forEach(p => { if (pp.has(p)) score -= 500000; });
-        for (let s = 0; s < N; s++) { if (perm[s] === prevRow[s]) score -= 50000; }
-        if (perm[0] === prevRow[0] || perm[0] === prevRow[N - 1]) score -= 100000;
-        if (perm[N - 1] === prevRow[0] || perm[N - 1] === prevRow[N - 1]) score -= 100000;
-      }
-
-      // Exact repeat penalty (scoring layer backup)
-      const permKey = perm.join(',');
-      if (recentSet.has(permKey)) score -= 2000000;
-
-      // Near-repeat penalty: penalize arrangements seen 2+ days ago in window
-      for (let h = Math.max(0, scheduleList.length - recentWindow); h < scheduleList.length; h++) {
-        const past = scheduleList[h];
-        let sameCount = 0;
-        for (let s = 0; s < N; s++) { if (perm[s] === past[s]) sameCount++; }
-        if (sameCount >= N - 1) score -= 300000; // Only 1 swap away = too similar
-      }
-
-      let minE = Infinity;
-      for (let p = 0; p < N; p++) { const ec = seatCounts[p][0] + seatCounts[p][N - 1]; if (ec < minE) minE = ec; }
-      score -= (seatCounts[perm[0]][0] + seatCounts[perm[0]][N - 1] - minE) * 500;
-      score -= (seatCounts[perm[N - 1]][0] + seatCounts[perm[N - 1]][N - 1] - minE) * 500;
-      score += ((perm.reduce((h, v, i) => h + v * Math.pow(7, i), 0) * 2654435761 + day * 1000000007) % 997) * 0.001;
-      if (score > bestScore) { bestScore = score; bestPerm = perm; }
-    });
-
-    scheduleList.push(bestPerm);
-    for (let s = 0; s < N; s++) seatCounts[bestPerm[s]][s]++;
-    getPairs(bestPerm).forEach(p => { pairCounts[p] = (pairCounts[p] || 0) + 1; });
-    prevRow = bestPerm;
-
-    // Update recent set (sliding window)
-    recentSet.add(bestPerm.join(','));
-    if (scheduleList.length > recentWindow) {
-      recentSet.delete(scheduleList[scheduleList.length - recentWindow - 1].join(','));
-    }
-  }
-  scheduleSeatCounts = seatCounts;
-  schedulePairCounts = pairCounts;
-}
 
 function getDynamicRow(dayIndex, dateStr) {
   if (generatedScheduleCache[dateStr]) return generatedScheduleCache[dateStr];
@@ -288,11 +166,9 @@ function getDynamicRow(dayIndex, dateStr) {
     generatedScheduleCache[dateStr] = row;
     return row;
   }
-  // Fallback: build locally if not yet fetched
-  buildScheduleLocal(dayIndex);
-  const row = scheduleList[dayIndex];
-  generatedScheduleCache[dateStr] = row;
-  return row;
+  // No local fallback. The UI strictly depends on the Python backend.
+  console.error(`CRITICAL: Schedule for day ${dayIndex} not pre-built by backend. Engine unavailable.`);
+  return [0, 1, 2, 3, 4]; // Safe placeholder to prevent UI crash
 }
 
 // ─── ROTATION LOGIC ───────────────────────────────────────────────
