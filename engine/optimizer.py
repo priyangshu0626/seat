@@ -113,18 +113,22 @@ class SeatOptimizer:
         pair_counts: dict[str, int],
         seat_counts: np.ndarray,
         last_arrangement: Optional[list[int]],
+        recent_arrangements: Optional[list[list[int]]] = None,
     ) -> str:
         """
         Build a deterministic cache key from the optimizer state.
 
         Enables memoization: if we've already computed the best
         arrangement for this exact state, we skip recomputation.
+        Includes recent_arrangements to prevent stale cache hits
+        that would produce duplicate arrangements.
         """
         parts = [
             str(day_index),
             str(sorted(pair_counts.items())),
             seat_counts.tobytes().hex(),
             str(last_arrangement) if last_arrangement is not None else "None",
+            str([tuple(a) for a in recent_arrangements]) if recent_arrangements else "[]",
         ]
         return "|".join(parts)
 
@@ -165,7 +169,7 @@ class SeatOptimizer:
         t_start = time.perf_counter()
 
         # ── Check cache ──
-        cache_key = self._make_cache_key(day_index, pair_counts, seat_counts, last_arrangement)
+        cache_key = self._make_cache_key(day_index, pair_counts, seat_counts, last_arrangement, recent_arrangements)
         if cache_key in self._cache:
             cached = self._cache[cache_key]
             t_end = time.perf_counter()
@@ -190,7 +194,8 @@ class SeatOptimizer:
             t_cpsat = time.perf_counter()
 
             model, seat_vars, aux = build_cpsat_model(
-                self.config, graph, seat_counts, last_arrangement, day_index
+                self.config, graph, seat_counts, last_arrangement, day_index,
+                recent_arrangements=recent_arrangements,
             )
 
             solutions, status, solve_ms = solve_cpsat_model(
@@ -374,9 +379,8 @@ class SeatOptimizer:
         for day_offset in range(num_days):
             day_index = start_day + day_offset
 
-            # For bulk generation, reduce planning overhead for speed
-            # Full planning on first day and every 5th day
-            day_planning = use_planning and (day_offset == 0 or day_offset % 5 == 0)
+            # Enable planning on every day to maximize arrangement diversity
+            day_planning = use_planning
 
             arrangement, score, profiling = self.optimize_single_day(
                 day_index, pair_counts, seat_counts, last_row,

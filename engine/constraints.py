@@ -266,6 +266,42 @@ def filter_no_exact_repeats(
         
     return candidates[np.array(valid)]
 
+
+def filter_no_near_repeats(
+    candidates: np.ndarray,
+    recent_arrangements: Optional[list[list[int]]] = None,
+    min_differences: int = 2,
+) -> np.ndarray:
+    """
+    HARD CONSTRAINT: No Near-Duplicate Arrangements.
+    
+    Rejects candidates where fewer than `min_differences` seats differ
+    from any arrangement in the recent history. For 5 people with
+    min_differences=2, this blocks arrangements that are only 1 swap
+    away from a recent one.
+    """
+    if not recent_arrangements:
+        return candidates
+        
+    recent_arrays = [np.array(arr, dtype=np.int32) for arr in recent_arrangements]
+    num_seats = candidates.shape[1]
+    
+    valid = []
+    for i in range(len(candidates)):
+        is_valid = True
+        for past in recent_arrays:
+            differences = np.sum(candidates[i] != past)
+            if differences < min_differences:
+                is_valid = False
+                break
+        if is_valid:
+            valid.append(i)
+    
+    if len(valid) == 0:
+        return candidates  # Relaxation
+        
+    return candidates[np.array(valid)]
+
 def apply_all_hard_constraints(
     permutations: np.ndarray,
     seat_counts: np.ndarray,
@@ -309,17 +345,22 @@ def apply_all_hard_constraints(
     if len(filtered) > 0:
         candidates = filtered
 
-    # 3. No edge repetition
+    # 3. No near-duplicate repeats from history (must differ in ≥2 seats)
+    filtered = filter_no_near_repeats(candidates, recent_arrangements, min_differences=2)
+    if len(filtered) > 0:
+        candidates = filtered
+
+    # 4. No edge repetition
     filtered = filter_no_repeat_edges(candidates, last_arrangement)
     if len(filtered) > 0:
         candidates = filtered
 
-    # 3. No seat repetition
+    # 5. No seat repetition
     filtered = filter_no_repeat_seats(candidates, last_arrangement)
     if len(filtered) > 0:
         candidates = filtered
 
-    # 4. No pair repetition
+    # 6. No pair repetition
     filtered = filter_no_repeat_pairs(candidates, last_arrangement)
     if len(filtered) > 0:
         candidates = filtered

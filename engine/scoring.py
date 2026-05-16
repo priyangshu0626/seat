@@ -188,9 +188,19 @@ def score_arrangement(
     if recent_arrangements:
         curr_tuple = tuple(int(x) for x in arrangement)
         for recent_arr in recent_arrangements:
-            if curr_tuple == tuple(int(x) for x in recent_arr):
+            recent_tuple = tuple(int(x) for x in recent_arr)
+            if curr_tuple == recent_tuple:
                 score -= weights.exact_repeat_penalty
                 break  # Only penalize once even if it appears multiple times
+
+    # ── 2c. NEAR-REPEAT AVOIDANCE ──
+    # Penalize arrangements that differ in fewer than 2 positions from any recent one
+    if recent_arrangements:
+        num_seats = len(arrangement)
+        for recent_arr in recent_arrangements:
+            same_count = sum(1 for s in range(num_seats) if int(arrangement[s]) == int(recent_arr[s]))
+            if same_count >= num_seats - 1:  # Only 0 or 1 seat different
+                score -= weights.exact_repeat_penalty // 2
 
     # ── 3. EDGE FAIRNESS ──
     min_edge = float("inf")

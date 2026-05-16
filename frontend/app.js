@@ -157,7 +157,7 @@ async function buildScheduleFromBackend(upToDayIndex) {
   }
 }
 
-// Local fallback engine — identical to V2 logic, used if backend is down
+// Local fallback engine — hardened with exact-repeat avoidance matching backend
 function buildScheduleLocal(upToDayIndex) {
   if (scheduleList.length > upToDayIndex) return;
   const N = PEOPLE.length;
@@ -174,7 +174,14 @@ function buildScheduleLocal(upToDayIndex) {
   let pairCounts = { ...schedulePairCounts };
   let prevRow = scheduleList.length > 0 ? scheduleList[scheduleList.length - 1] : null;
 
+  // Build a set of recent arrangements for exact-repeat hard filtering
+  const recentWindow = 14;
+  let recentSet = new Set(
+    scheduleList.slice(-recentWindow).map(a => a.join(','))
+  );
+
   for (let day = scheduleList.length; day <= upToDayIndex; day++) {
+    // ── HARD CONSTRAINT 1: Seat balance (Latin-square) ──
     const minPerSeat = [];
     for (let s = 0; s < N; s++) {
       let min = Infinity;
@@ -185,8 +192,38 @@ function buildScheduleLocal(upToDayIndex) {
       for (let s = 0; s < N; s++) { if (seatCounts[perm[s]][s] > minPerSeat[s]) return false; }
       return true;
     });
-    if (candidates.length === 0) candidates = ALL_PERMS;
+    if (candidates.length === 0) candidates = [...ALL_PERMS];
 
+    // ── HARD CONSTRAINT 2: No exact repeat from recent history ──
+    let filtered = candidates.filter(p => !recentSet.has(p.join(',')));
+    if (filtered.length > 0) candidates = filtered;
+
+    // ── HARD CONSTRAINT 3: No edge repetition from yesterday ──
+    if (prevRow) {
+      filtered = candidates.filter(p =>
+        p[0] !== prevRow[0] && p[0] !== prevRow[N - 1] &&
+        p[N - 1] !== prevRow[0] && p[N - 1] !== prevRow[N - 1]
+      );
+      if (filtered.length > 0) candidates = filtered;
+    }
+
+    // ── HARD CONSTRAINT 4: No same-seat repetition from yesterday ──
+    if (prevRow) {
+      filtered = candidates.filter(p => {
+        for (let s = 0; s < N; s++) { if (p[s] === prevRow[s]) return false; }
+        return true;
+      });
+      if (filtered.length > 0) candidates = filtered;
+    }
+
+    // ── HARD CONSTRAINT 5: No pair repetition from yesterday ──
+    if (prevRow) {
+      const prevPairs = new Set(getPairs(prevRow));
+      filtered = candidates.filter(p => !getPairs(p).some(pp => prevPairs.has(pp)));
+      if (filtered.length > 0) candidates = filtered;
+    }
+
+    // ── SOFT SCORING: rank remaining candidates ──
     let bestScore = -Infinity, bestPerm = candidates[0];
     candidates.forEach(perm => {
       let score = 0;
@@ -204,13 +241,26 @@ function buildScheduleLocal(upToDayIndex) {
         const pp = new Set(getPairs(prevRow));
         pairs.forEach(p => { if (pp.has(p)) score -= 500000; });
         for (let s = 0; s < N; s++) { if (perm[s] === prevRow[s]) score -= 50000; }
-        if (perm[0] === prevRow[0] || perm[0] === prevRow[4]) score -= 100000;
-        if (perm[4] === prevRow[0] || perm[4] === prevRow[4]) score -= 100000;
+        if (perm[0] === prevRow[0] || perm[0] === prevRow[N - 1]) score -= 100000;
+        if (perm[N - 1] === prevRow[0] || perm[N - 1] === prevRow[N - 1]) score -= 100000;
       }
+
+      // Exact repeat penalty (scoring layer backup)
+      const permKey = perm.join(',');
+      if (recentSet.has(permKey)) score -= 2000000;
+
+      // Near-repeat penalty: penalize arrangements seen 2+ days ago in window
+      for (let h = Math.max(0, scheduleList.length - recentWindow); h < scheduleList.length; h++) {
+        const past = scheduleList[h];
+        let sameCount = 0;
+        for (let s = 0; s < N; s++) { if (perm[s] === past[s]) sameCount++; }
+        if (sameCount >= N - 1) score -= 300000; // Only 1 swap away = too similar
+      }
+
       let minE = Infinity;
-      for (let p = 0; p < N; p++) { const ec = seatCounts[p][0] + seatCounts[p][4]; if (ec < minE) minE = ec; }
-      score -= (seatCounts[perm[0]][0] + seatCounts[perm[0]][4] - minE) * 500;
-      score -= (seatCounts[perm[4]][0] + seatCounts[perm[4]][4] - minE) * 500;
+      for (let p = 0; p < N; p++) { const ec = seatCounts[p][0] + seatCounts[p][N - 1]; if (ec < minE) minE = ec; }
+      score -= (seatCounts[perm[0]][0] + seatCounts[perm[0]][N - 1] - minE) * 500;
+      score -= (seatCounts[perm[N - 1]][0] + seatCounts[perm[N - 1]][N - 1] - minE) * 500;
       score += ((perm.reduce((h, v, i) => h + v * Math.pow(7, i), 0) * 2654435761 + day * 1000000007) % 997) * 0.001;
       if (score > bestScore) { bestScore = score; bestPerm = perm; }
     });
@@ -219,6 +269,12 @@ function buildScheduleLocal(upToDayIndex) {
     for (let s = 0; s < N; s++) seatCounts[bestPerm[s]][s]++;
     getPairs(bestPerm).forEach(p => { pairCounts[p] = (pairCounts[p] || 0) + 1; });
     prevRow = bestPerm;
+
+    // Update recent set (sliding window)
+    recentSet.add(bestPerm.join(','));
+    if (scheduleList.length > recentWindow) {
+      recentSet.delete(scheduleList[scheduleList.length - recentWindow - 1].join(','));
+    }
   }
   scheduleSeatCounts = seatCounts;
   schedulePairCounts = pairCounts;
