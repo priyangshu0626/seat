@@ -1,10 +1,10 @@
 // ─── CONFIG & CONSTANTS ───────────────────────────────────────────
 const PEOPLE = [
-  { name: 'Sachin', initial: 'S', color: '#ff6b35' }, // 0
-  { name: 'Priyangshu', initial: 'P', color: '#7b61ff' }, // 1
-  { name: 'Gaurav', initial: 'G', color: '#1a936f' }, // 2
-  { name: 'Yatharth', initial: 'Y', color: '#e8b84b' }, // 3
-  { name: 'Aryavrat', initial: 'A', color: '#e63946' }, // 4
+  { name: 'Sachin', initial: 'S', color: '#ff6b35', colorRgb: '255, 107, 53' }, // 0
+  { name: 'Priyangshu', initial: 'P', color: '#7b61ff', colorRgb: '123, 97, 255' }, // 1
+  { name: 'Gaurav', initial: 'G', color: '#1a936f', colorRgb: '26, 147, 111' }, // 2
+  { name: 'Yatharth', initial: 'Y', color: '#e8b84b', colorRgb: '232, 184, 75' }, // 3
+  { name: 'Aryavrat', initial: 'A', color: '#e63946', colorRgb: '230, 57, 70' }, // 4
 ];
 
 const SEAT_META = [
@@ -387,6 +387,7 @@ function triggerHolidayTheme() {
     radial-gradient(circle at 50% 80%, rgba(26,147,111,0.35), transparent 50%)
   `;
 
+  overlay.style.webkitBackdropFilter = 'blur(6px)';
   overlay.style.backdropFilter = 'blur(6px)';
 
   overlay.style.opacity = '0';
@@ -583,12 +584,12 @@ function render(animate) {
         : '🚨 On Duty Today — Edge Seats'
       }</div>
       <div class="duty-people" id="duty-people">
-        <div class="duty-chip" style="--pc:${dL.color}">
+        <div class="duty-chip" style="--pc:${dL.color}; --pc-rgb:${dL.colorRgb}">
           <div class="duty-av">${dL.initial}</div>
           <div><div class="duty-name">${dL.name}</div><div class="duty-seat">Seat 1 · Left Edge</div></div>
         </div>
         <span class="duty-amp">&amp;</span>
-        <div class="duty-chip" style="--pc:${dR.color}">
+        <div class="duty-chip" style="--pc:${dR.color}; --pc-rgb:${dR.colorRgb}">
           <div class="duty-av">${dR.initial}</div>
           <div><div class="duty-name">${dR.name}</div><div class="duty-seat">Seat 5 · Right Edge</div></div>
         </div>
@@ -641,7 +642,7 @@ function render(animate) {
 
       const seat = document.createElement('div');
       seat.className = `seat ${m.css}${isDuty ? ' is-duty' : ''}`;
-      seat.style.cssText = `--pc:${p.color}`;
+      seat.style.cssText = `--pc:${p.color}; --pc-rgb:${p.colorRgb}`;
 
       seat.style.transition = 'all 0.25s ease';
 
@@ -663,7 +664,7 @@ function render(animate) {
         ${isDuty
           ? `<div class="seat-badge badge-duty" style="--pc:${p.color}">ON DUTY</div>`
           : `<div class="seat-badge ${m.badge}">${m.badgeText}</div>`}
-        <div class="seat-avatar" style="border-color:${p.color};color:${p.color};background:color-mix(in srgb,${p.color} 10%,transparent)">${p.initial}</div>
+        <div class="seat-avatar" style="border-color:${p.color};color:${p.color};background:rgba(${p.colorRgb}, 0.1)">${p.initial}</div>
         <div class="seat-name">${p.name.length > 9 ? p.name.slice(0, 8) + '…' : p.name}</div>
         <div class="comfort-bar-wrap"><div class="comfort-bar" style="width:${m.comfortPct}%;background:${m.color}"></div></div>
       `;
@@ -752,9 +753,9 @@ function render(animate) {
     div.innerHTML = `
       <div class="cycle-day-num">D${d + 1}</div>
       <div class="cycle-edges">
-        <span class="mini-chip" style="--pc:${el.color}"><span class="mini-dot"></span>${el.name}</span>
+        <span class="mini-chip" style="--pc:${el.color}; --pc-rgb:${el.colorRgb}"><span class="mini-dot"></span>${el.name}</span>
         <span style="font-size:10px;color:var(--muted)">↔</span>
-        <span class="mini-chip" style="--pc:${er.color}"><span class="mini-dot"></span>${er.name}</span>
+        <span class="mini-chip" style="--pc:${er.color}; --pc-rgb:${er.colorRgb}"><span class="mini-dot"></span>${er.name}</span>
       </div>
       ${isToday && !isSelected ? '<span class="cycle-today-badge">TODAY</span>' : ''}
       ${isSelected && !isToday ? '<span class="cycle-sel-badge">VIEWING</span>' : ''}
@@ -782,7 +783,7 @@ function render(animate) {
       found++;
       const li = document.createElement('div');
       li.className = 'queue-item';
-      li.style.cssText = `--pc:${fl.color}`;
+      li.style.cssText = `--pc:${fl.color}; --pc-rgb:${fl.colorRgb}`;
       li.innerHTML = `
         <div class="queue-pos">${found}</div>
         <div class="queue-av">${fl.initial}</div>
@@ -925,7 +926,7 @@ function renderStats() {
     const row = document.createElement('div');
     row.className = 'duty-score-row';
     row.innerHTML = `
-      <div class="duty-score-av" style="border:1.5px solid ${p.color};color:${p.color};background:color-mix(in srgb,${p.color} 12%,transparent)">${p.initial}</div>
+      <div class="duty-score-av" style="border:1.5px solid ${p.color};color:${p.color};background:rgba(${p.colorRgb}, 0.12)">${p.initial}</div>
       <div class="duty-score-name">${p.name}</div>
       <div class="duty-score-track">
         <div class="duty-score-fill" style="width:${pct}%;background:${p.color}"></div>
@@ -1019,7 +1020,7 @@ function renderStats() {
       const intensity = cnt === 0 ? 0 : 0.18 + (cnt / hmMax) * 0.72;
       const cellColor = cnt === 0
         ? 'rgba(128,128,128,0.06)'
-        : `color-mix(in srgb,${p.color} ${Math.round(intensity * 100)}%,transparent)`;
+        : `rgba(${p.colorRgb}, ${intensity})`;
       const textColor = intensity > 0.55 ? '#fff' : p.color;
       const seatName = ['Edge', 'Near', 'Middle', 'Near', 'Edge'][si];
 
@@ -1143,7 +1144,7 @@ function renderStats() {
         } else {
           cell.style.background = val === 0
             ? 'rgba(128,128,128,0.08)'
-            : `color-mix(in srgb, ${p.color} ${Math.round(intensity * 100)}%, transparent)`;
+            : `rgba(${p.colorRgb}, ${intensity})`;
 
           cell.style.color = intensity > 0.6 ? '#fff' : p.color;
           cell.textContent = val;
@@ -1176,7 +1177,7 @@ function renderStats() {
 
         cell.style.background = val === 0
           ? 'rgba(128,128,128,0.08)'
-          : `color-mix(in srgb, ${PEOPLE[i].color} ${Math.round(intensity * 100)}%, transparent)`;
+          : `rgba(${PEOPLE[i].colorRgb}, ${intensity})`;
 
         cell.style.color = intensity > 0.6 ? '#fff' : PEOPLE[i].color;
 
