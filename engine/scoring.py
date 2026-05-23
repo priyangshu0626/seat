@@ -214,6 +214,20 @@ def score_arrangement(
     score -= (edge_l - min_edge) * weights.edge_imbalance_penalty
     score -= (edge_r - min_edge) * weights.edge_imbalance_penalty
 
+    # ── 3b. RECENT EDGE COOLDOWN ──
+    # Penalize putting someone on an edge if they were on an edge within the
+    # last N days. This prevents short-term clustering where the same people
+    # keep ending up on edges even though long-term totals are balanced.
+    if recent_arrangements:
+        cooldown = getattr(weights, 'recent_edge_cooldown_days', 3)
+        recent_window = recent_arrangements[-cooldown:]
+        curr_edges = {int(arrangement[0]), int(arrangement[-1])}
+        for past_arr in recent_window:
+            past_edges = {int(past_arr[0]), int(past_arr[-1])}
+            overlap = curr_edges & past_edges
+            for _ in overlap:
+                score -= weights.recent_edge_penalty
+
     # ── 4. ENTROPY BONUS ──
     # Simulate what entropy would be if we added this arrangement's pairs
     hypothetical_counts = dict(pair_counts)

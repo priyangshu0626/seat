@@ -302,6 +302,54 @@ def filter_no_near_repeats(
         
     return candidates[np.array(valid)]
 
+def filter_recent_edge_cooldown(
+    candidates: np.ndarray,
+    recent_arrangements: Optional[list[list[int]]],
+    cooldown_days: int = 2,
+) -> np.ndarray:
+    """
+    HARD CONSTRAINT: Recent Edge Cooldown.
+
+    Prevents a person from being on an edge seat if they were on an edge
+    within the last `cooldown_days` arrangements. This breaks short-term
+    clustering where the same people keep appearing on edges.
+
+    With 5 people and 2 edge seats per day, the theoretical minimum gap
+    between edge assignments for the same person is ~2 days, so
+    cooldown_days=2 is the maximum feasible value.
+
+    Args:
+        candidates: (K, num_seats) filtered permutations
+        recent_arrangements: history of recent arrangements
+        cooldown_days: number of past days to check for edge recency
+
+    Returns:
+        Further filtered permutations
+    """
+    if not recent_arrangements:
+        return candidates
+
+    # Collect all people who were on edges in the last N days
+    recent_edge_people = set()
+    window = recent_arrangements[-cooldown_days:]
+    for arr in window:
+        recent_edge_people.add(int(arr[0]))
+        recent_edge_people.add(int(arr[-1]))
+
+    if not recent_edge_people:
+        return candidates
+
+    # Reject candidates that place any recently-edged person on an edge
+    valid_mask = np.ones(len(candidates), dtype=bool)
+    for person in recent_edge_people:
+        valid_mask &= (candidates[:, 0] != person) & (candidates[:, -1] != person)
+
+    if valid_mask.sum() == 0:
+        return candidates  # Relaxation: if impossible, skip this constraint
+
+    return candidates[valid_mask]
+
+
 def apply_all_hard_constraints(
     permutations: np.ndarray,
     seat_counts: np.ndarray,
@@ -315,16 +363,20 @@ def apply_all_hard_constraints(
 
     Constraint application order (strictest first):
     1. Seat balance (Latin-square rotation)
-    2. No immediate edge repetition
-    3. No immediate seat repetition
-    4. No immediate pair repetition
+    2. No exact repeats from history
+    3. No near-duplicate repeats
+    4. No immediate edge repetition
+    5. No immediate seat repetition
+    6. No immediate pair repetition
+
+    Note: Recent edge cooldown (2+ day spacing) is NOT applied as a hard
+    constraint because it is mathematically impossible with 5 people and
+    2 edge seats per day (would block 4 of 5 people, leaving 0 valid
+    edge pairs). Instead, edge spacing is handled via boosted soft
+    penalties in the scoring function.
 
     If any constraint would eliminate all candidates, it's relaxed
     (skipped) to ensure we always return at least one valid candidate.
-
-    This is mathematically sound: constraint relaxation only triggers
-    when the constraint is mathematically impossible to satisfy, which
-    happens only at cycle boundaries.
 
     Args:
         permutations: all n! permutations
@@ -332,6 +384,7 @@ def apply_all_hard_constraints(
         last_arrangement: previous day's arrangement
         num_people: number of people
         num_seats: number of seats
+        recent_arrangements: history of recent arrangements
 
     Returns:
         Filtered permutations satisfying maximum constraints
@@ -350,7 +403,7 @@ def apply_all_hard_constraints(
     if len(filtered) > 0:
         candidates = filtered
 
-    # 4. No edge repetition
+    # 4. No edge repetition (immediate previous day)
     filtered = filter_no_repeat_edges(candidates, last_arrangement)
     if len(filtered) > 0:
         candidates = filtered

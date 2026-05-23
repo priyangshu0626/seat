@@ -89,8 +89,16 @@ class OptimizerWeights(BaseModel):
 
     # ── Edge fairness ──
     edge_imbalance_penalty: int = Field(
-        default=500,
+        default=5000,
         description="Cost per unit of edge-duty imbalance"
+    )
+    recent_edge_penalty: int = Field(
+        default=15000,
+        description="Cost for putting someone on an edge who was on an edge within the last 3 days"
+    )
+    recent_edge_cooldown_days: int = Field(
+        default=3,
+        description="Number of recent days to look back for edge cooldown"
     )
 
     # ── Future flexibility ──

@@ -1139,7 +1139,9 @@ async function init() {
   // Load blocked dates — try backend-served path first, then relative
   for (const path of ['./frontend/data.json', './data.json']) {
     try {
-      const res = await fetch(path);
+      // Add a cache buster query parameter to bypass browser/Cloudflare caching
+      const cacheBustPath = `${path}?t=${Date.now()}`;
+      const res = await fetch(cacheBustPath);
       if (res.ok) {
         const data = await res.json();
         blockedDates = data.blockedDates || [];
