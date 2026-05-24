@@ -110,6 +110,10 @@ async def serve_frontend():
 
 # ─── ENDPOINTS ─────────────────────────────────────────────────────
 
+@app.get("/ping")
+def health():
+    return {"status": "ok"}
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint with engine capability report."""
@@ -345,8 +349,22 @@ async def analyze_schedule(req: AnalyzeRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# Mount static files at root — MUST be LAST (catch-all for app.js, data.json, etc.)
-app.mount("/", StaticFiles(directory=FRONTEND_DIR), name="static")
+# Mount static files under /static — serves app.js, data.json, etc.
+# This MUST NOT be mounted at "/" to avoid shadowing API routes like /ping.
+app.mount("/frontend", StaticFiles(directory=FRONTEND_DIR), name="static")
+
+
+# SPA catch-all — serves index.html for any unmatched GET request.
+# This MUST be the LAST route defined to avoid intercepting API endpoints.
+@app.get("/{full_path:path}", include_in_schema=False)
+async def spa_fallback(full_path: str):
+    """Serve static files or fall back to index.html for SPA routing."""
+    # Try to serve the requested file from the frontend directory
+    file_path = os.path.join(FRONTEND_DIR, full_path)
+    if full_path and os.path.isfile(file_path):
+        return FileResponse(file_path)
+    # Fall back to index.html for SPA client-side routing
+    return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
 
 # ─── MAIN ──────────────────────────────────────────────────────────
