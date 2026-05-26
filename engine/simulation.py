@@ -27,7 +27,7 @@ import time
 
 import numpy as np
 
-from .state_manager import EngineConfig
+from .state_manager import EngineConfig, TemporalOverrides
 from .graph_model import PairInteractionGraph, get_adjacent_pairs
 from .scoring import (
     score_arrangement,
@@ -261,6 +261,7 @@ def beam_search_with_rollouts(
     num_rollouts: int = 10,
     seed: int = 42,
     recent_arrangements: Optional[list[list[int]]] = None,
+    temporal_overrides: Optional[TemporalOverrides] = None,
 ) -> tuple[list[int], float, dict]:
     """
     Beam search with Monte Carlo rollout evaluation.
@@ -300,6 +301,7 @@ def beam_search_with_rollouts(
     candidates = apply_all_hard_constraints(
         all_perms, seat_counts, last_arrangement, n, num_seats,
         recent_arrangements=recent_arrangements,
+        temporal_overrides=temporal_overrides,
     )
 
     # ── Step 2: Score today's candidates (greedy) ──
@@ -308,6 +310,7 @@ def beam_search_with_rollouts(
             cand, graph, seat_counts, last_arrangement,
             day_index, config.weights, n,
             recent_arrangements=recent_arrangements,
+            temporal_overrides=temporal_overrides,
         )
         for cand in candidates
     ])
@@ -388,6 +391,7 @@ def greedy_optimize(
     config: EngineConfig,
     day_index: int,
     recent_arrangements: Optional[list[list[int]]] = None,
+    temporal_overrides: Optional[TemporalOverrides] = None,
 ) -> tuple[list[int], float, dict]:
     """
     Fast greedy optimization — evaluate all valid candidates, pick the best.
@@ -417,6 +421,7 @@ def greedy_optimize(
     candidates = apply_all_hard_constraints(
         all_perms, seat_counts, last_arrangement, n, num_seats,
         recent_arrangements=recent_arrangements,
+        temporal_overrides=temporal_overrides,
     )
 
     if len(candidates) == 0:
@@ -429,6 +434,7 @@ def greedy_optimize(
             cand, graph, seat_counts, last_arrangement,
             day_index, config.weights, n,
             recent_arrangements=recent_arrangements,
+            temporal_overrides=temporal_overrides,
         )
         for cand in candidates
     ])

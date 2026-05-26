@@ -191,6 +191,28 @@ class ScheduleState(BaseModel):
 
 # ─── API SCHEMAS ───────────────────────────────────────────────────
 
+class SeparationRule(BaseModel):
+    """A pair of people who must NOT sit adjacent during a date range."""
+    person1_idx: int = Field(..., description="Index of first person")
+    person2_idx: int = Field(..., description="Index of second person")
+
+class EdgePreferenceRule(BaseModel):
+    """A person who should be given higher edge-seat preference during a date range."""
+    person_idx: int = Field(..., description="Index of the person")
+    boost: float = Field(default=2.0, description="Multiplier for edge preference scoring")
+
+class TemporalOverrides(BaseModel):
+    """Active temporal overrides for the current day."""
+    active_separations: list[SeparationRule] = Field(
+        default_factory=list,
+        description="Pairs that must not sit adjacent today"
+    )
+    active_edge_boosts: list[EdgePreferenceRule] = Field(
+        default_factory=list,
+        description="People who should sit at edges today"
+    )
+
+
 class GenerateRequest(BaseModel):
     """
     Input payload for POST /generate.
@@ -215,6 +237,10 @@ class GenerateRequest(BaseModel):
     recent_arrangements: list[list[int]] = Field(
         default_factory=list,
         description="History of recent arrangements to avoid exact repetitions"
+    )
+    temporal_overrides: Optional[TemporalOverrides] = Field(
+        default=None,
+        description="Active temporal overrides (separation rules, edge boosts) for this day"
     )
 
 class PairGraphEdge(BaseModel):
@@ -260,6 +286,10 @@ class BulkGenerateRequest(BaseModel):
     initial_seat_counts: list[list[int]] = Field(default_factory=list)
     initial_last_row: Optional[list[int]] = Field(default=None)
     recent_arrangements: list[list[int]] = Field(default_factory=list)
+    temporal_overrides: Optional[TemporalOverrides] = Field(
+        default=None,
+        description="Active temporal overrides (separation rules, edge boosts) for this day"
+    )
 
 class BulkDayResult(BaseModel):
     """Result for a single day within a bulk generation."""

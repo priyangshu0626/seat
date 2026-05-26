@@ -31,11 +31,12 @@ const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'S
 const DAYS_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
-// ─── STATE ────────────────────────────────────────────────────────
+// ─── STATE ────────────────────────────────────────────────────────────
 let history = [];
 let lightMode = false;
 let selectedOffset = 0;
 let blockedDates = []; // Loaded from data.json
+let temporalOverrides = null; // Loaded from data.json
 let generatedScheduleCache = {};
 let maxFutureDays = 7;
 
@@ -115,6 +116,51 @@ function resetScheduleState() {
   generatedScheduleCache = {};
 }
 
+// Resolve which temporal override rules are active for a given date string
+function resolveActiveOverrides(dateStr) {
+  if (!temporalOverrides) return null;
+
+  const active = { active_separations: [], active_edge_boosts: [] };
+
+  // Resolve separation rules
+  if (temporalOverrides.separationRules) {
+    for (const rule of temporalOverrides.separationRules) {
+      if (dateStr >= rule.startDate && dateStr <= rule.endDate) {
+        // Look up person indices by name
+        const idx1 = PEOPLE.findIndex(p => p.name === rule.person1);
+        const idx2 = PEOPLE.findIndex(p => p.name === rule.person2);
+        if (idx1 >= 0 && idx2 >= 0) {
+          active.active_separations.push({
+            person1_idx: idx1,
+            person2_idx: idx2,
+          });
+        }
+      }
+    }
+  }
+
+  // Resolve edge preference rules
+  if (temporalOverrides.edgePreferenceRules) {
+    for (const rule of temporalOverrides.edgePreferenceRules) {
+      if (dateStr >= rule.startDate && dateStr <= rule.endDate) {
+        const idx = PEOPLE.findIndex(p => p.name === rule.person);
+        if (idx >= 0) {
+          active.active_edge_boosts.push({
+            person_idx: idx,
+            boost: rule.boost || 2.0,
+          });
+        }
+      }
+    }
+  }
+
+  // Return null if no active rules (engine treats null as no overrides)
+  if (active.active_separations.length === 0 && active.active_edge_boosts.length === 0) {
+    return null;
+  }
+  return active;
+}
+
 // Fetch schedule from backend in bulk — replaces local buildSchedule()
 async function buildScheduleFromBackend(upToDayIndex) {
   if (scheduleList.length > upToDayIndex) return;
@@ -133,6 +179,7 @@ async function buildScheduleFromBackend(upToDayIndex) {
         initial_seat_counts: scheduleSeatCounts,
         initial_last_row: scheduleList.length > 0 ? scheduleList[scheduleList.length - 1] : null,
         recent_arrangements: scheduleList.slice(-14),
+        temporal_overrides: resolveActiveOverrides(todayStr()),
       }),
     });
 
@@ -1145,6 +1192,7 @@ async function init() {
       if (res.ok) {
         const data = await res.json();
         blockedDates = data.blockedDates || [];
+        temporalOverrides = data.temporalOverrides || null;
         break;
       }
     } catch (err) { /* try next path */ }

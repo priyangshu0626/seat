@@ -39,7 +39,7 @@ from typing import Optional
 
 import numpy as np
 
-from .state_manager import EngineConfig
+from .state_manager import EngineConfig, TemporalOverrides
 from .graph_model import PairInteractionGraph, get_adjacent_pairs
 from .scoring import (
     score_arrangement,
@@ -114,6 +114,7 @@ class SeatOptimizer:
         seat_counts: np.ndarray,
         last_arrangement: Optional[list[int]],
         recent_arrangements: Optional[list[list[int]]] = None,
+        temporal_overrides: Optional[TemporalOverrides] = None,
     ) -> str:
         """
         Build a deterministic cache key from the optimizer state.
@@ -129,6 +130,7 @@ class SeatOptimizer:
             seat_counts.tobytes().hex(),
             str(last_arrangement) if last_arrangement is not None else "None",
             str([tuple(a) for a in recent_arrangements]) if recent_arrangements else "[]",
+            str(temporal_overrides.model_dump()) if temporal_overrides else "None",
         ]
         return "|".join(parts)
 
@@ -141,6 +143,7 @@ class SeatOptimizer:
         use_planning: bool = True,
         generate_explanation: bool = False,
         recent_arrangements: Optional[list[list[int]]] = None,
+        temporal_overrides: Optional[TemporalOverrides] = None,
     ) -> tuple[np.ndarray, float, dict]:
         """
         Find the optimal arrangement for a single day.
@@ -169,7 +172,7 @@ class SeatOptimizer:
         t_start = time.perf_counter()
 
         # ── Check cache ──
-        cache_key = self._make_cache_key(day_index, pair_counts, seat_counts, last_arrangement, recent_arrangements)
+        cache_key = self._make_cache_key(day_index, pair_counts, seat_counts, last_arrangement, recent_arrangements, temporal_overrides)
         if cache_key in self._cache:
             cached = self._cache[cache_key]
             t_end = time.perf_counter()
@@ -196,6 +199,7 @@ class SeatOptimizer:
             model, seat_vars, aux = build_cpsat_model(
                 self.config, graph, seat_counts, last_arrangement, day_index,
                 recent_arrangements=recent_arrangements,
+                temporal_overrides=temporal_overrides,
             )
 
             solutions, status, solve_ms = solve_cpsat_model(
@@ -217,6 +221,7 @@ class SeatOptimizer:
                         sol_arr, graph, seat_counts, last_arrangement,
                         day_index, self.config.weights, n,
                         recent_arrangements=recent_arrangements,
+                        temporal_overrides=temporal_overrides,
                     )
                     scored.append((sol, sc))
 
@@ -282,6 +287,7 @@ class SeatOptimizer:
                     lookahead_depth=min(self.config.lookahead_depth, 7),
                     num_rollouts=min(self.config.monte_carlo_samples, 10),
                     recent_arrangements=recent_arrangements,
+                    temporal_overrides=temporal_overrides,
                 )
                 arrangement = np.array(arr_list, dtype=np.int32)
                 score = sc
@@ -291,6 +297,7 @@ class SeatOptimizer:
                     graph, seat_counts, last_arrangement, self.all_perms,
                     self.config, day_index,
                     recent_arrangements=recent_arrangements,
+                    temporal_overrides=temporal_overrides,
                 )
                 arrangement = np.array(arr_list, dtype=np.int32)
                 score = sc
@@ -346,6 +353,7 @@ class SeatOptimizer:
         initial_last_row: Optional[list[int]] = None,
         use_planning: bool = True,
         recent_arrangements: Optional[list[list[int]]] = None,
+        temporal_overrides: Optional[TemporalOverrides] = None,
     ) -> list[tuple[np.ndarray, float, dict]]:
         """
 
@@ -386,6 +394,7 @@ class SeatOptimizer:
                 day_index, pair_counts, seat_counts, last_row,
                 use_planning=day_planning,
                 recent_arrangements=history,
+                temporal_overrides=temporal_overrides,
             )
 
             results.append((arrangement, score, profiling))

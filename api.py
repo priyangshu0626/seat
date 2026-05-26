@@ -187,6 +187,7 @@ async def generate_arrangement(req: GenerateRequest):
                 use_planning=True,
                 generate_explanation=True,
                 recent_arrangements=req.recent_arrangements,
+                temporal_overrides=req.temporal_overrides,
             )
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Optimization failed: {str(e)}")
@@ -255,6 +256,7 @@ async def generate_bulk(req: BulkGenerateRequest):
             initial_seat_counts=seat_counts,
             initial_last_row=last_row,
             recent_arrangements=req.recent_arrangements,
+            temporal_overrides=req.temporal_overrides,
         )
 
         running_pair_counts = dict(pair_counts)

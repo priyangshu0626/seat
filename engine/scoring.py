@@ -23,7 +23,7 @@ from typing import Optional
 import math
 import numpy as np
 
-from .state_manager import OptimizerWeights
+from .state_manager import OptimizerWeights, TemporalOverrides
 from .graph_model import PairInteractionGraph, get_adjacent_pairs, canonical_pair_key
 
 
@@ -113,6 +113,7 @@ def score_arrangement(
     weights: OptimizerWeights,
     num_people: int,
     recent_arrangements: Optional[list[list[int]]] = None,
+    temporal_overrides: Optional[TemporalOverrides] = None,
 ) -> float:
     """
     Compute the composite score for a single candidate arrangement.
@@ -127,6 +128,7 @@ def score_arrangement(
     4. ENTROPY BONUS — reward arrangements that increase overall entropy
     5. DETERMINISTIC TIEBREAKER — hash-based for reproducibility
     6. EXACT REPEAT AVOIDANCE — huge penalty for repeating recent arrangements
+    7. TEMPORAL OVERRIDES — separation penalties and edge boost rewards
 
     Args:
         arrangement: candidate seat assignment
@@ -137,6 +139,7 @@ def score_arrangement(
         weights: scoring weight configuration
         num_people: number of people
         recent_arrangements: history of arrangements to avoid repeating
+        temporal_overrides: active temporal overrides for the current day
 
     Returns:
         Composite score (higher = better)
@@ -238,7 +241,23 @@ def score_arrangement(
     )
     score += hyp_entropy * weights.entropy_weight
 
-    # ── 5. DETERMINISTIC TIEBREAKER ──
+    # ── 5. TEMPORAL OVERRIDE SCORING ──
+    if temporal_overrides:
+        # 5a. Separation penalty — huge penalty if separated pair is adjacent
+        if temporal_overrides.active_separations:
+            for rule in temporal_overrides.active_separations:
+                sep_key = canonical_pair_key(rule.person1_idx, rule.person2_idx)
+                if sep_key in pairs:
+                    score -= weights.back_to_back_pair_penalty * 4  # Extremely heavy penalty
+
+        # 5b. Edge boost reward — bonus for placing boosted people on edges
+        if temporal_overrides.active_edge_boosts:
+            curr_edges = {int(arrangement[0]), int(arrangement[-1])}
+            for rule in temporal_overrides.active_edge_boosts:
+                if rule.person_idx in curr_edges:
+                    score += rule.boost * weights.edge_imbalance_penalty * 3
+
+    # ── 6. DETERMINISTIC TIEBREAKER ──
     hash_val = 0
     for i, v in enumerate(arrangement):
         hash_val += int(v) * (7 ** i)

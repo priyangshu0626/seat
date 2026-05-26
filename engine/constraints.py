@@ -30,7 +30,7 @@ import warnings
 
 import numpy as np
 
-from .state_manager import EngineConfig, OptimizerWeights
+from .state_manager import EngineConfig, OptimizerWeights, TemporalOverrides
 from .graph_model import PairInteractionGraph, canonical_pair_key, get_adjacent_pairs
 
 # ── OR-Tools availability (subprocess-safe detection) ──
@@ -350,6 +350,48 @@ def filter_recent_edge_cooldown(
     return candidates[valid_mask]
 
 
+def filter_separation_rules(
+    candidates: np.ndarray,
+    temporal_overrides: Optional[TemporalOverrides],
+) -> np.ndarray:
+    """
+    HARD CONSTRAINT: Temporal Pair Separation.
+
+    Removes any candidate where a separated pair (from temporal overrides)
+    would be adjacent. This is a date-ranged hard constraint — the frontend
+    resolves which rules are active for the current date and passes only
+    the active ones.
+
+    Args:
+        candidates: (K, num_seats) filtered permutations
+        temporal_overrides: active temporal overrides with separation rules
+
+    Returns:
+        Further filtered permutations
+    """
+    if not temporal_overrides or not temporal_overrides.active_separations:
+        return candidates
+
+    # Build set of blocked pair keys
+    blocked_pairs = set()
+    for rule in temporal_overrides.active_separations:
+        blocked_pairs.add(canonical_pair_key(rule.person1_idx, rule.person2_idx))
+
+    if not blocked_pairs:
+        return candidates
+
+    valid = []
+    for i in range(len(candidates)):
+        cand_pairs = get_adjacent_pairs(candidates[i])
+        if not any(p in blocked_pairs for p in cand_pairs):
+            valid.append(i)
+
+    if len(valid) == 0:
+        return candidates  # Relaxation: if impossible, skip this constraint
+
+    return candidates[np.array(valid)]
+
+
 def apply_all_hard_constraints(
     permutations: np.ndarray,
     seat_counts: np.ndarray,
@@ -357,17 +399,19 @@ def apply_all_hard_constraints(
     num_people: int,
     num_seats: int,
     recent_arrangements: Optional[list[list[int]]] = None,
+    temporal_overrides: Optional[TemporalOverrides] = None,
 ) -> np.ndarray:
     """
     Apply ALL hard constraints in sequence with automatic relaxation.
 
     Constraint application order (strictest first):
     1. Seat balance (Latin-square rotation)
-    2. No exact repeats from history
-    3. No near-duplicate repeats
-    4. No immediate edge repetition
-    5. No immediate seat repetition
-    6. No immediate pair repetition
+    2. Temporal separation rules (date-ranged pair blocking)
+    3. No exact repeats from history
+    4. No near-duplicate repeats
+    5. No immediate edge repetition
+    6. No immediate seat repetition
+    7. No immediate pair repetition
 
     Note: Recent edge cooldown (2+ day spacing) is NOT applied as a hard
     constraint because it is mathematically impossible with 5 people and
@@ -385,6 +429,7 @@ def apply_all_hard_constraints(
         num_people: number of people
         num_seats: number of seats
         recent_arrangements: history of recent arrangements
+        temporal_overrides: active temporal overrides for the current day
 
     Returns:
         Filtered permutations satisfying maximum constraints
@@ -393,27 +438,32 @@ def apply_all_hard_constraints(
     min_per_seat = compute_min_per_seat(seat_counts, num_people, num_seats)
     candidates = filter_seat_balanced_legacy(permutations, seat_counts, min_per_seat)
 
-    # 2. No exact repeats from history
+    # 2. Temporal separation rules (high priority — applied early)
+    filtered = filter_separation_rules(candidates, temporal_overrides)
+    if len(filtered) > 0:
+        candidates = filtered
+
+    # 3. No exact repeats from history
     filtered = filter_no_exact_repeats(candidates, recent_arrangements)
     if len(filtered) > 0:
         candidates = filtered
 
-    # 3. No near-duplicate repeats from history (must differ in ≥2 seats)
+    # 4. No near-duplicate repeats from history (must differ in ≥2 seats)
     filtered = filter_no_near_repeats(candidates, recent_arrangements, min_differences=2)
     if len(filtered) > 0:
         candidates = filtered
 
-    # 4. No edge repetition (immediate previous day)
+    # 5. No edge repetition (immediate previous day)
     filtered = filter_no_repeat_edges(candidates, last_arrangement)
     if len(filtered) > 0:
         candidates = filtered
 
-    # 5. No seat repetition
+    # 6. No seat repetition
     filtered = filter_no_repeat_seats(candidates, last_arrangement)
     if len(filtered) > 0:
         candidates = filtered
 
-    # 6. No pair repetition
+    # 7. No pair repetition
     filtered = filter_no_repeat_pairs(candidates, last_arrangement)
     if len(filtered) > 0:
         candidates = filtered
@@ -464,6 +514,7 @@ def build_cpsat_model(
     last_arrangement: Optional[list[int] | np.ndarray],
     day_index: int,
     recent_arrangements: Optional[list[list[int]]] = None,
+    temporal_overrides: Optional[TemporalOverrides] = None,
 ) -> tuple["cp_model.CpModel", list["cp_model.IntVar"], dict]:
     """
     Build the CP-SAT constraint programming model.
@@ -513,6 +564,16 @@ def build_cpsat_model(
         for arr in recent_arrangements:
             model.AddForbiddenAssignments(seat_vars, [tuple(int(x) for x in arr)])
 
+    # HARD: Temporal separation rules — block separated pairs from adjacency
+    if temporal_overrides and temporal_overrides.active_separations:
+        for rule in temporal_overrides.active_separations:
+            a, b = rule.person1_idx, rule.person2_idx
+            for s in range(num_seats - 1):
+                model.AddForbiddenAssignments(
+                    [seat_vars[s], seat_vars[s + 1]],
+                    [(a, b), (b, a)]
+                )
+
     # SOFT: Edge fairness
     cost_terms = []
     pair_counts = graph.pair_counts
@@ -535,6 +596,22 @@ def build_cpsat_model(
             model.Add(seat_vars[-1] == p).OnlyEnforceIf(is_right)
             model.Add(seat_vars[-1] != p).OnlyEnforceIf(is_right.Not())
             cost_terms.append((is_right, edge_excess * config.weights.edge_imbalance_penalty))
+
+    # SOFT: Temporal edge preference boost — reward placing boosted people on edges
+    if temporal_overrides and temporal_overrides.active_edge_boosts:
+        for rule in temporal_overrides.active_edge_boosts:
+            p = rule.person_idx
+            boost_cost = int(-rule.boost * config.weights.edge_imbalance_penalty)
+
+            is_left = model.NewBoolVar(f"boost_edge_l_{p}")
+            model.Add(seat_vars[0] == p).OnlyEnforceIf(is_left)
+            model.Add(seat_vars[0] != p).OnlyEnforceIf(is_left.Not())
+            cost_terms.append((is_left, boost_cost))  # negative cost = reward
+
+            is_right = model.NewBoolVar(f"boost_edge_r_{p}")
+            model.Add(seat_vars[-1] == p).OnlyEnforceIf(is_right)
+            model.Add(seat_vars[-1] != p).OnlyEnforceIf(is_right.Not())
+            cost_terms.append((is_right, boost_cost))  # negative cost = reward
 
     if cost_terms:
         total_cost = model.NewIntVar(-10_000_000, 100_000_000, "total_cost")
