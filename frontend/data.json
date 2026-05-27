@@ -33,6 +33,20 @@
         "boost": 2.0,
         "reason": "Should sit at edges more this week"
       }
+    ],
+    "edgeForceRules": [
+      {
+        "person": "Yatharth",
+        "startDate": "2026-05-28",
+        "endDate": "2026-05-29",
+        "reason": "Must be on edge seat on May 28-29"
+      },
+      {
+        "person": "Gaurav",
+        "startDate": "2026-05-28",
+        "endDate": "2026-05-29",
+        "reason": "Must be on edge seat on May 28-29"
+      }
     ]
   }
 }

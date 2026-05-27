@@ -201,6 +201,10 @@ class EdgePreferenceRule(BaseModel):
     person_idx: int = Field(..., description="Index of the person")
     boost: float = Field(default=2.0, description="Multiplier for edge preference scoring")
 
+class EdgeForceRule(BaseModel):
+    """A person who MUST sit on an edge seat during a date range (hard constraint)."""
+    person_idx: int = Field(..., description="Index of the person who must be on an edge")
+
 class TemporalOverrides(BaseModel):
     """Active temporal overrides for the current day."""
     active_separations: list[SeparationRule] = Field(
@@ -210,6 +214,10 @@ class TemporalOverrides(BaseModel):
     active_edge_boosts: list[EdgePreferenceRule] = Field(
         default_factory=list,
         description="People who should sit at edges today"
+    )
+    active_edge_forces: list[EdgeForceRule] = Field(
+        default_factory=list,
+        description="People who MUST sit on edge seats today (hard constraint)"
     )
 
 

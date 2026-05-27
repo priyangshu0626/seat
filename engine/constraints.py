@@ -392,6 +392,43 @@ def filter_separation_rules(
     return candidates[np.array(valid)]
 
 
+def filter_edge_force_rules(
+    candidates: np.ndarray,
+    temporal_overrides: Optional[TemporalOverrides],
+) -> np.ndarray:
+    """
+    HARD CONSTRAINT: Temporal Edge Force.
+
+    Forces specific people onto edge seats (seat 0 or seat -1).
+    Only candidates where ALL forced people are on an edge are kept.
+
+    Args:
+        candidates: (K, num_seats) filtered permutations
+        temporal_overrides: active temporal overrides with edge force rules
+
+    Returns:
+        Further filtered permutations
+    """
+    if not temporal_overrides or not temporal_overrides.active_edge_forces:
+        return candidates
+
+    forced_people = {rule.person_idx for rule in temporal_overrides.active_edge_forces}
+
+    if not forced_people:
+        return candidates
+
+    valid_mask = np.ones(len(candidates), dtype=bool)
+    for person in forced_people:
+        # Person must be on seat 0 or seat -1
+        person_on_edge = (candidates[:, 0] == person) | (candidates[:, -1] == person)
+        valid_mask &= person_on_edge
+
+    if valid_mask.sum() == 0:
+        return candidates  # Relaxation: if impossible, skip this constraint
+
+    return candidates[valid_mask]
+
+
 def apply_all_hard_constraints(
     permutations: np.ndarray,
     seat_counts: np.ndarray,
@@ -440,6 +477,11 @@ def apply_all_hard_constraints(
 
     # 2. Temporal separation rules (high priority — applied early)
     filtered = filter_separation_rules(candidates, temporal_overrides)
+    if len(filtered) > 0:
+        candidates = filtered
+
+    # 2b. Temporal edge force rules (hard constraint — applied early)
+    filtered = filter_edge_force_rules(candidates, temporal_overrides)
     if len(filtered) > 0:
         candidates = filtered
 
@@ -573,6 +615,20 @@ def build_cpsat_model(
                     [seat_vars[s], seat_vars[s + 1]],
                     [(a, b), (b, a)]
                 )
+
+    # HARD: Temporal edge force — forced people must be on seat 0 or seat -1
+    if temporal_overrides and temporal_overrides.active_edge_forces:
+        for rule in temporal_overrides.active_edge_forces:
+            p = rule.person_idx
+            # p must be on seat 0 OR seat -1
+            is_left = model.NewBoolVar(f"force_edge_l_{p}")
+            model.Add(seat_vars[0] == p).OnlyEnforceIf(is_left)
+            model.Add(seat_vars[0] != p).OnlyEnforceIf(is_left.Not())
+            is_right = model.NewBoolVar(f"force_edge_r_{p}")
+            model.Add(seat_vars[-1] == p).OnlyEnforceIf(is_right)
+            model.Add(seat_vars[-1] != p).OnlyEnforceIf(is_right.Not())
+            # At least one must be true
+            model.AddBoolOr([is_left, is_right])
 
     # SOFT: Edge fairness
     cost_terms = []

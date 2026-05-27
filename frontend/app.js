@@ -120,7 +120,7 @@ function resetScheduleState() {
 function resolveActiveOverrides(dateStr) {
   if (!temporalOverrides) return null;
 
-  const active = { active_separations: [], active_edge_boosts: [] };
+  const active = { active_separations: [], active_edge_boosts: [], active_edge_forces: [] };
 
   // Resolve separation rules
   if (temporalOverrides.separationRules) {
@@ -139,7 +139,7 @@ function resolveActiveOverrides(dateStr) {
     }
   }
 
-  // Resolve edge preference rules
+  // Resolve edge preference rules (soft boost)
   if (temporalOverrides.edgePreferenceRules) {
     for (const rule of temporalOverrides.edgePreferenceRules) {
       if (dateStr >= rule.startDate && dateStr <= rule.endDate) {
@@ -154,8 +154,22 @@ function resolveActiveOverrides(dateStr) {
     }
   }
 
+  // Resolve edge force rules (hard constraint)
+  if (temporalOverrides.edgeForceRules) {
+    for (const rule of temporalOverrides.edgeForceRules) {
+      if (dateStr >= rule.startDate && dateStr <= rule.endDate) {
+        const idx = PEOPLE.findIndex(p => p.name === rule.person);
+        if (idx >= 0) {
+          active.active_edge_forces.push({
+            person_idx: idx,
+          });
+        }
+      }
+    }
+  }
+
   // Return null if no active rules (engine treats null as no overrides)
-  if (active.active_separations.length === 0 && active.active_edge_boosts.length === 0) {
+  if (active.active_separations.length === 0 && active.active_edge_boosts.length === 0 && active.active_edge_forces.length === 0) {
     return null;
   }
   return active;
