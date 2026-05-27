@@ -257,6 +257,7 @@ async def generate_bulk(req: BulkGenerateRequest):
             initial_last_row=last_row,
             recent_arrangements=req.recent_arrangements,
             temporal_overrides=req.temporal_overrides,
+            per_day_overrides=req.per_day_overrides,
         )
 
         running_pair_counts = dict(pair_counts)

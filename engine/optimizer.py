@@ -354,6 +354,7 @@ class SeatOptimizer:
         use_planning: bool = True,
         recent_arrangements: Optional[list[list[int]]] = None,
         temporal_overrides: Optional[TemporalOverrides] = None,
+        per_day_overrides: Optional[list[Optional[TemporalOverrides]]] = None,
     ) -> list[tuple[np.ndarray, float, dict]]:
         """
 
@@ -367,6 +368,7 @@ class SeatOptimizer:
             initial_seat_counts: starting seat counts
             initial_last_row: arrangement from the day before start_day
             use_planning: whether to use Monte Carlo lookahead
+            per_day_overrides: per-day temporal overrides (takes precedence over temporal_overrides)
 
         Returns:
             List of (arrangement, score, profiling_dict) for each day
@@ -387,6 +389,11 @@ class SeatOptimizer:
         for day_offset in range(num_days):
             day_index = start_day + day_offset
 
+            # Resolve per-day overrides: per_day_overrides[day_offset] takes precedence
+            day_overrides = temporal_overrides
+            if per_day_overrides is not None and day_offset < len(per_day_overrides):
+                day_overrides = per_day_overrides[day_offset]
+
             # Enable planning on every day to maximize arrangement diversity
             day_planning = use_planning
 
@@ -394,7 +401,7 @@ class SeatOptimizer:
                 day_index, pair_counts, seat_counts, last_row,
                 use_planning=day_planning,
                 recent_arrangements=history,
-                temporal_overrides=temporal_overrides,
+                temporal_overrides=day_overrides,
             )
 
             results.append((arrangement, score, profiling))

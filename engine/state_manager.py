@@ -296,7 +296,11 @@ class BulkGenerateRequest(BaseModel):
     recent_arrangements: list[list[int]] = Field(default_factory=list)
     temporal_overrides: Optional[TemporalOverrides] = Field(
         default=None,
-        description="Active temporal overrides (separation rules, edge boosts) for this day"
+        description="Default temporal overrides applied to all days (fallback)"
+    )
+    per_day_overrides: Optional[list[Optional[TemporalOverrides]]] = Field(
+        default=None,
+        description="Per-day temporal overrides. If provided, overrides[i] applies to the i-th generated day. Takes precedence over temporal_overrides."
     )
 
 class BulkDayResult(BaseModel):

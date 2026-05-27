@@ -175,12 +175,36 @@ function resolveActiveOverrides(dateStr) {
   return active;
 }
 
+// Map a class-day index to its calendar date string
+function getDateForClassDay(classDayIndex) {
+  const base = new Date(START_DATE + 'T00:00:00');
+  let count = 0;
+  for (let scan = 0; scan < 3650; scan++) {
+    const d = new Date(base);
+    d.setDate(d.getDate() + scan);
+    const ds = fmtDate(d);
+    if (!isBlocked(ds)) {
+      if (count === classDayIndex) return ds;
+      count++;
+    }
+  }
+  return null; // fallback
+}
+
 // Fetch schedule from backend in bulk — replaces local buildSchedule()
 async function buildScheduleFromBackend(upToDayIndex) {
   if (scheduleList.length > upToDayIndex) return;
 
   const numDaysNeeded = upToDayIndex + 1 - scheduleList.length;
   const startDay = scheduleList.length;
+
+  // Build per-day overrides based on each day's actual calendar date
+  const perDayOverrides = [];
+  for (let i = 0; i < numDaysNeeded; i++) {
+    const classDayIdx = startDay + i;
+    const dateStr = getDateForClassDay(classDayIdx);
+    perDayOverrides.push(dateStr ? resolveActiveOverrides(dateStr) : null);
+  }
 
   try {
     const res = await fetch(`${API_BASE}/generate-bulk`, {
@@ -193,7 +217,7 @@ async function buildScheduleFromBackend(upToDayIndex) {
         initial_seat_counts: scheduleSeatCounts,
         initial_last_row: scheduleList.length > 0 ? scheduleList[scheduleList.length - 1] : null,
         recent_arrangements: scheduleList.slice(-14),
-        temporal_overrides: resolveActiveOverrides(todayStr()),
+        per_day_overrides: perDayOverrides,
       }),
     });
 
