@@ -168,8 +168,17 @@ function resolveActiveOverrides(dateStr) {
     }
   }
 
+  // Resolve custom arrangement (hardcoded bypass)
+  if (temporalOverrides.customArrangements) {
+    for (const rule of temporalOverrides.customArrangements) {
+      if (dateStr === rule.date) {
+        active.custom_arrangement = rule.arrangement.map(name => PEOPLE.findIndex(p => p.name === name));
+      }
+    }
+  }
+
   // Return null if no active rules (engine treats null as no overrides)
-  if (active.active_separations.length === 0 && active.active_edge_boosts.length === 0 && active.active_edge_forces.length === 0) {
+  if (active.active_separations.length === 0 && active.active_edge_boosts.length === 0 && active.active_edge_forces.length === 0 && !active.custom_arrangement) {
     return null;
   }
   return active;

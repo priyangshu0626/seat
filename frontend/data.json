@@ -34,18 +34,14 @@
         "reason": "Should sit at edges more this week"
       }
     ],
-    "edgeForceRules": [
+    "customArrangements": [
       {
-        "person": "Yatharth",
-        "startDate": "2026-05-28",
-        "endDate": "2026-05-29",
-        "reason": "Must be on edge seat on May 28-29"
+        "date": "2026-05-28",
+        "arrangement": ["Yatharth", "Sachin", "Priyangshu", "Aryavrat", "Gaurav"]
       },
       {
-        "person": "Gaurav",
-        "startDate": "2026-05-28",
-        "endDate": "2026-05-29",
-        "reason": "Must be on edge seat on May 28-29"
+        "date": "2026-05-29",
+        "arrangement": ["Gaurav", "Priyangshu", "Sachin", "Aryavrat", "Yatharth"]
       }
     ]
   }

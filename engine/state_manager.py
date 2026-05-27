@@ -219,6 +219,10 @@ class TemporalOverrides(BaseModel):
         default_factory=list,
         description="People who MUST sit on edge seats today (hard constraint)"
     )
+    custom_arrangement: Optional[list[int]] = Field(
+        default=None,
+        description="Hardcoded custom arrangement for this day (bypasses optimizer)"
+    )
 
 
 class GenerateRequest(BaseModel):

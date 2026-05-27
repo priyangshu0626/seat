@@ -182,6 +182,19 @@ class SeatOptimizer:
                 {**cached["profiling"], "computation_ms": (t_end - t_start) * 1000, "cache_hit": True},
             )
 
+        # ── Custom Arrangement Override ──
+        if temporal_overrides and temporal_overrides.custom_arrangement is not None:
+            arrangement = np.array(temporal_overrides.custom_arrangement, dtype=np.int32)
+            score = 999999.0  # arbitrary high score for override
+            profiling = {"solver_status": "CUSTOM_OVERRIDE", "computation_ms": 0.0, "cache_hit": False, "explanation": ""}
+            
+            self._cache[cache_key] = {
+                "arrangement": arrangement.tolist(),
+                "score": score,
+                "profiling": profiling,
+            }
+            return arrangement, score, profiling
+
         # ── Build graph model ──
         graph = PairInteractionGraph(self.config, pair_counts)
         n = self.config.num_people
