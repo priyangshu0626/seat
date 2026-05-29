@@ -42,6 +42,22 @@
       {
         "date": "2026-05-29",
         "arrangement": ["Gaurav", "Priyangshu", "Sachin", "Aryavrat", "Yatharth"]
+      },
+      {
+        "date": "2026-05-30",
+        "arrangement": ["Priyangshu", "Aryavrat", "Yatharth", "Gaurav", "Sachin"]
+      },
+      {
+        "date": "2026-05-31",
+        "arrangement": ["Sachin", "Gaurav", "Aryavrat", "Yatharth", "Priyangshu"]
+      },
+      {
+        "date": "2026-06-01",
+        "arrangement": ["Aryavrat", "Gaurav", "Yatharth", "Priyangshu", "Sachin"]
+      },
+      {
+        "date": "2026-06-02",
+        "arrangement": ["Gaurav", "Priyangshu", "Aryavrat", "Sachin", "Yatharth"]
       }
     ]
   }
