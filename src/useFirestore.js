@@ -8,10 +8,7 @@ import {
 
 /**
  * Real-time Firestore hook for shared app state.
- *
- * Firestore structure:
- *   config/holidays → { dates: ["2026-08-15", "2026-10-02", ...] }
- *   config/avatars  → { Priyangshu: { style: "adventurer", seed: "Priyangshu" }, ... }
+ * Includes automatic timeout fallbacks so the page NEVER stays blank or stuck loading.
  */
 
 // ─── Holidays ───
@@ -21,34 +18,56 @@ export function useHolidays() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onSnapshot(
-      doc(db, "config", "holidays"),
-      (snap) => {
-        if (snap.exists()) {
-          setHolidays(snap.data().dates || []);
-        } else {
-          setHolidays([]);
+    // Safety timeout: stop loading after 2s even if offline/blocked
+    const timer = setTimeout(() => setLoading(false), 2000);
+
+    try {
+      const unsub = onSnapshot(
+        doc(db, "config", "holidays"),
+        (snap) => {
+          clearTimeout(timer);
+          if (snap.exists()) {
+            setHolidays(snap.data().dates || []);
+          } else {
+            setHolidays([]);
+          }
+          setLoading(false);
+        },
+        (err) => {
+          console.warn("Holidays listener warning (using fallback):", err);
+          clearTimeout(timer);
+          setLoading(false);
         }
-        setLoading(false);
-      },
-      (err) => {
-        console.error("Holidays listener error:", err);
-        setLoading(false);
-      }
-    );
-    return unsub;
+      );
+      return () => {
+        clearTimeout(timer);
+        unsub();
+      };
+    } catch (e) {
+      console.warn("Firestore error:", e);
+      clearTimeout(timer);
+      setLoading(false);
+    }
   }, []);
 
   const addHoliday = useCallback(async (dateStr) => {
-    const ref = doc(db, "config", "holidays");
-    const updated = [...new Set([...holidays, dateStr])].sort();
-    await setDoc(ref, { dates: updated });
+    try {
+      const ref = doc(db, "config", "holidays");
+      const updated = [...new Set([...holidays, dateStr])].sort();
+      await setDoc(ref, { dates: updated });
+    } catch (e) {
+      console.error("Failed to save holiday:", e);
+    }
   }, [holidays]);
 
   const removeHoliday = useCallback(async (dateStr) => {
-    const ref = doc(db, "config", "holidays");
-    const updated = holidays.filter((d) => d !== dateStr);
-    await setDoc(ref, { dates: updated });
+    try {
+      const ref = doc(db, "config", "holidays");
+      const updated = holidays.filter((d) => d !== dateStr);
+      await setDoc(ref, { dates: updated });
+    } catch (e) {
+      console.error("Failed to remove holiday:", e);
+    }
   }, [holidays]);
 
   return { holidays, loading, addHoliday, removeHoliday };
@@ -69,29 +88,46 @@ export function useAvatars() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onSnapshot(
-      doc(db, "config", "avatars"),
-      (snap) => {
-        if (snap.exists()) {
-          setAvatars({ ...DEFAULT_AVATARS, ...snap.data() });
-        } else {
-          setAvatars(DEFAULT_AVATARS);
+    const timer = setTimeout(() => setLoading(false), 2000);
+
+    try {
+      const unsub = onSnapshot(
+        doc(db, "config", "avatars"),
+        (snap) => {
+          clearTimeout(timer);
+          if (snap.exists()) {
+            setAvatars({ ...DEFAULT_AVATARS, ...snap.data() });
+          } else {
+            setAvatars(DEFAULT_AVATARS);
+          }
+          setLoading(false);
+        },
+        (err) => {
+          console.warn("Avatars listener warning (using fallback):", err);
+          clearTimeout(timer);
+          setLoading(false);
         }
-        setLoading(false);
-      },
-      (err) => {
-        console.error("Avatars listener error:", err);
-        setLoading(false);
-      }
-    );
-    return unsub;
+      );
+      return () => {
+        clearTimeout(timer);
+        unsub();
+      };
+    } catch (e) {
+      console.warn("Firestore error:", e);
+      clearTimeout(timer);
+      setLoading(false);
+    }
   }, []);
 
   const updateAvatar = useCallback(
     async (person, style, seed) => {
-      const ref = doc(db, "config", "avatars");
-      const updated = { ...avatars, [person]: { style, seed } };
-      await setDoc(ref, updated);
+      try {
+        const ref = doc(db, "config", "avatars");
+        const updated = { ...avatars, [person]: { style, seed } };
+        await setDoc(ref, updated);
+      } catch (e) {
+        console.error("Failed to update avatar:", e);
+      }
     },
     [avatars]
   );
