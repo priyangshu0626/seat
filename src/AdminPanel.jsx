@@ -20,11 +20,14 @@ export default function AdminPanel({
   updateTimetableDay,
   messMenu,
   updateMessMenuDay,
+  announcements,
+  addAnnouncement,
+  removeAnnouncement,
 }) {
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [pwError, setPwError] = useState(false);
-  const [tab, setTab] = useState("holidays"); // "holidays" | "avatars" | "timetable" | "mess"
+  const [tab, setTab] = useState("holidays"); // "holidays" | "avatars" | "timetable" | "mess" | "announcements"
   const [newDate, setNewDate] = useState("");
   const [editingPerson, setEditingPerson] = useState(null);
 
@@ -88,7 +91,7 @@ export default function AdminPanel({
         <div className="admin-header">
           <div>
             <div className="modal-title">Admin Control Panel</div>
-            <div className="modal-subtitle">Manage holidays, avatars, schedule & mess food</div>
+            <div className="modal-subtitle">Manage holidays, avatars, schedule, mess food & announcements</div>
           </div>
           <button className="admin-close" onClick={onClose} id="admin-close">
             ✕
@@ -120,6 +123,12 @@ export default function AdminPanel({
             onClick={() => setTab("mess")}
           >
             🍽️ Mess Menu
+          </button>
+          <button
+            className={`admin-tab ${tab === "announcements" ? "active" : ""}`}
+            onClick={() => setTab("announcements")}
+          >
+            📢 Announcements
           </button>
         </div>
 
@@ -155,6 +164,14 @@ export default function AdminPanel({
             <MessMenuTab
               messMenu={messMenu}
               updateMessMenuDay={updateMessMenuDay}
+            />
+          )}
+
+          {tab === "announcements" && (
+            <AnnouncementsTab
+              announcements={announcements}
+              onAdd={addAnnouncement}
+              onRemove={removeAnnouncement}
             />
           )}
         </div>
@@ -521,6 +538,117 @@ function MessMenuTab({ messMenu, updateMessMenuDay }) {
         <button className="btn btn-primary" onClick={handleSaveMenu}>
           ✓ Save {selectedDay}'s Menu
         </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Announcements Tab ─── */
+function AnnouncementsTab({ announcements, onAdd, onRemove }) {
+  const [title, setTitle] = useState("");
+  const [category, setCategory] = useState("Assignment");
+  const [subject, setSubject] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [details, setDetails] = useState("");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!title || !dueDate) return;
+    await onAdd({
+      title,
+      category,
+      subject: subject || "General",
+      dueDate,
+      details,
+    });
+    setTitle("");
+    setSubject("");
+    setDueDate("");
+    setDetails("");
+  };
+
+  return (
+    <div className="admin-tab-content">
+      <h4 className="admin-sub-title">Add New Announcement / Deadline</h4>
+
+      <form onSubmit={handleSubmit} className="admin-form-vertical">
+        <div className="admin-form-grid">
+          <input
+            type="text"
+            className="admin-input"
+            placeholder="Title (e.g. Policy Brief Submission)"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            required
+          />
+          <select
+            className="admin-input"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            <option value="Assignment">📝 Assignment</option>
+            <option value="Quiz">✍️ Quiz</option>
+            <option value="Reading">📖 Reading Material</option>
+            <option value="Notice">📢 General Notice</option>
+          </select>
+          <input
+            type="text"
+            className="admin-input"
+            placeholder="Subject (e.g. PA — Public Admin)"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+          />
+          <input
+            type="date"
+            className="admin-input"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            required
+          />
+        </div>
+
+        <textarea
+          className="admin-textarea"
+          rows="2"
+          placeholder="Details / Submission Instructions..."
+          value={details}
+          onChange={(e) => setDetails(e.target.value)}
+        />
+
+        <button type="submit" className="btn btn-primary" disabled={!title || !dueDate}>
+          + Publish Announcement
+        </button>
+      </form>
+
+      <h4 className="admin-sub-title" style={{ marginTop: "1.5rem" }}>
+        Active Announcements ({announcements.length})
+      </h4>
+
+      <div className="admin-items-list">
+        {announcements.length === 0 ? (
+          <div className="holiday-empty">No active announcements added yet</div>
+        ) : (
+          announcements.map((item) => (
+            <div className="admin-slot-item" key={item.id}>
+              <div>
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                  <span className="slot-item-time">{item.category}</span>
+                  <span className="slot-item-sub">• Due: {item.dueDate}</span>
+                </div>
+                <div className="slot-item-title">{item.title}</div>
+                <div className="slot-item-sub">{item.subject}</div>
+                {item.details && <div style={{ fontSize: "0.8rem", marginTop: "0.2rem", color: "var(--text-muted)" }}>{item.details}</div>}
+              </div>
+              <button
+                className="holiday-remove"
+                onClick={() => onRemove(item.id)}
+                aria-label="Remove announcement"
+              >
+                ✕
+              </button>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

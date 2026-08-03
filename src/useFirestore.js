@@ -323,6 +323,101 @@ export function useMessMenu() {
   return { messMenu, loading, updateMessMenuDay };
 }
 
+// ─── Announcements / Assignments / Quizzes / Readings ───
+
+export const DEFAULT_ANNOUNCEMENTS = [
+  {
+    id: "ann-1",
+    title: "Public Administration Policy Brief",
+    category: "Assignment",
+    subject: "PA — Public Administration",
+    dueDate: "2026-08-10",
+    details: "Submit 500-word policy brief on urban governance models on Moodle by 11:59 PM.",
+  },
+  {
+    id: "ann-2",
+    title: "Financial Accounting Quiz 1",
+    category: "Quiz",
+    subject: "FA — Financial Accounting",
+    dueDate: "2026-08-08",
+    details: "In-class 20-minute quiz covering Balance Sheets & Cash Flow Statements.",
+  },
+  {
+    id: "ann-3",
+    title: "Climate Change & Law Case Study Reading",
+    category: "Reading",
+    subject: "CCL-I — Climate Change & Law",
+    dueDate: "2026-08-07",
+    details: "Read Paris Agreement Articles 4 & 6 case notes prior to lecture.",
+  },
+];
+
+export function useAnnouncements() {
+  const [announcements, setAnnouncements] = useState(DEFAULT_ANNOUNCEMENTS);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 2000);
+
+    try {
+      const unsub = onSnapshot(
+        doc(db, "config", "announcements"),
+        (snap) => {
+          clearTimeout(timer);
+          if (snap.exists()) {
+            setAnnouncements(snap.data().list || DEFAULT_ANNOUNCEMENTS);
+          } else {
+            setAnnouncements(DEFAULT_ANNOUNCEMENTS);
+          }
+          setLoading(false);
+        },
+        (err) => {
+          console.warn("Announcements listener warning:", err);
+          clearTimeout(timer);
+          setLoading(false);
+        }
+      );
+      return () => {
+        clearTimeout(timer);
+        unsub();
+      };
+    } catch (e) {
+      console.warn("Firestore error:", e);
+      clearTimeout(timer);
+      setLoading(false);
+    }
+  }, []);
+
+  const addAnnouncement = useCallback(
+    async (item) => {
+      try {
+        const ref = doc(db, "config", "announcements");
+        const newItem = { ...item, id: Date.now().toString() };
+        const updated = [newItem, ...announcements];
+        await setDoc(ref, { list: updated });
+      } catch (e) {
+        console.error("Failed to add announcement:", e);
+      }
+    },
+    [announcements]
+  );
+
+  const removeAnnouncement = useCallback(
+    async (id) => {
+      try {
+        const ref = doc(db, "config", "announcements");
+        const updated = announcements.filter((a) => a.id !== id);
+        await setDoc(ref, { list: updated });
+      } catch (e) {
+        console.error("Failed to remove announcement:", e);
+      }
+    },
+    [announcements]
+  );
+
+  return { announcements, loading, addAnnouncement, removeAnnouncement };
+}
+
 // ─── Avatar URL Builder ───
 
 export const AVATAR_STYLES = [

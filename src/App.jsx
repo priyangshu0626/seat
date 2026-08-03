@@ -12,6 +12,7 @@ import {
   useAvatars,
   useTimetable,
   useMessMenu,
+  useAnnouncements,
   getAvatarUrl,
 } from "./useFirestore";
 import AdminPanel from "./AdminPanel";
@@ -62,7 +63,14 @@ export default function App() {
     updateMessMenuDay,
   } = useMessMenu();
 
-  const loading = holidaysLoading || avatarsLoading || timetableLoading || messLoading;
+  const {
+    announcements,
+    loading: announcementsLoading,
+    addAnnouncement,
+    removeAnnouncement,
+  } = useAnnouncements();
+
+  const loading = holidaysLoading || avatarsLoading || timetableLoading || messLoading || announcementsLoading;
 
   // Apply theme
   useEffect(() => {
@@ -335,13 +343,57 @@ export default function App() {
                 </div>
               </div>
             </section>
+
+            {/* 4. ANNOUNCEMENTS, QUIZZES & DEADLINES */}
+            <section className="dashboard-card announcements-card-section">
+              <div className="card-header-row">
+                <div className="card-title">
+                  <span className="card-icon">📢</span> Upcoming Deadlines, Quizzes & Readings
+                </div>
+                <span className="badge badge-today">{announcements.length} Active</span>
+              </div>
+
+              {announcements.length === 0 ? (
+                <div className="empty-card-state">🎉 No upcoming assignments or quizzes posted</div>
+              ) : (
+                <div className="announcements-list">
+                  {announcements.map((ann) => {
+                    const categoryIcon =
+                      ann.category === "Assignment"
+                        ? "📝"
+                        : ann.category === "Quiz"
+                        ? "✍️"
+                        : ann.category === "Reading"
+                        ? "📖"
+                        : "📢";
+
+                    return (
+                      <div className="announcement-item-row" key={ann.id}>
+                        <div className="ann-category-pill">
+                          <span>{categoryIcon}</span>
+                          <span>{ann.category}</span>
+                        </div>
+                        <div className="ann-main-info">
+                          <div className="ann-title">{ann.title}</div>
+                          <div className="ann-meta">
+                            <span className="ann-subject-tag">{ann.subject}</span>
+                            <span className="ann-due-tag">📅 Due: {ann.dueDate}</span>
+                          </div>
+                          {ann.details && <div className="ann-details-text">{ann.details}</div>}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
           </main>
         )}
 
         {/* Footer */}
         <footer className="footer">
           <p>
-            Cycle of {totalPerms} unique arrangements · Real-time synced schedule & mess menu
+            Cycle of {totalPerms} unique arrangements · Real-time synced schedule, mess menu & deadlines
           </p>
         </footer>
       </div>
@@ -370,6 +422,9 @@ export default function App() {
           updateTimetableDay={updateTimetableDay}
           messMenu={messMenu}
           updateMessMenuDay={updateMessMenuDay}
+          announcements={announcements}
+          addAnnouncement={addAnnouncement}
+          removeAnnouncement={removeAnnouncement}
         />
       )}
     </>
