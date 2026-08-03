@@ -115,7 +115,7 @@ export default function App() {
     [displayDate, holidays, loading]
   );
   const timeline = useMemo(
-    () => (loading ? [] : getTimeline(holidays, 2, 8)),
+    () => (loading ? [] : getTimeline(holidays, 2, 20)),
     [holidays, loading]
   );
 
