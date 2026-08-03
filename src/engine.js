@@ -10,7 +10,7 @@ export const PEOPLE = ["Priyangshu", "Aryavrat", "Yatharth", "Sachin", "Gaurav"]
 export const SEAT_COUNT = PEOPLE.length;
 
 // ─── Start date of the cycle (first working day) ───
-export const CYCLE_START = new Date("2026-08-04"); // Monday
+export const CYCLE_START = new Date("2026-08-03"); // Monday Aug 3, 2026
 
 /**
  * Generate all permutations of an array (Heap's algorithm).
@@ -215,12 +215,11 @@ export function getTodayArrangement(holidays = []) {
  * Get a timeline of dates with arrangement info.
  * Includes weekends and holidays with status markers.
  */
-export function getTimeline(holidays = [], daysBack = 5, daysForward = 7) {
+export function getTimeline(holidays = [], daysBack = 2, daysForward = 8) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const results = [];
 
-  // Collect calendar days backwards (only weekdays — skip weekends for cleaner view)
+  // Collect calendar days backwards
   const pastDays = [];
   const cursor = new Date(today);
   while (pastDays.length < daysBack) {
@@ -245,6 +244,7 @@ export function getTimeline(holidays = [], daysBack = 5, daysForward = 7) {
   }
 
   const allDates = [...pastDays, ...futureDays];
+  const results = [];
 
   for (const d of allDates) {
     const holiday = isHoliday(d, holidays);

@@ -65,7 +65,7 @@ export default function App() {
     [holidays, loading]
   );
   const timeline = useMemo(
-    () => (loading ? [] : getTimeline(holidays, 5, 7)),
+    () => (loading ? [] : getTimeline(holidays, 2, 8)),
     [holidays, loading]
   );
   const isWeekendToday = checkWeekend(today);
@@ -144,7 +144,7 @@ export default function App() {
                       <div className="seat-avatar-wrap">
                         <img
                           className="seat-avatar"
-                          src={getAvatarUrl(av.style, av.seed, 80)}
+                          src={getAvatarUrl(av.style, av.seed, 96)}
                           alt={person}
                           loading="lazy"
                         />
@@ -218,21 +218,27 @@ export default function App() {
                   } ${entry.isHoliday ? "is-holiday" : ""}`}
                   key={idx}
                 >
-                  <div className="timeline-day-col">
-                    {entry.isHoliday ? (
-                      <div className="timeline-holiday-icon">🏖️</div>
-                    ) : (
-                      <div className="timeline-day-num">
-                        {entry.dayNumber || "—"}
+                  <div className="timeline-item-header">
+                    <div className="timeline-day-col">
+                      {entry.isHoliday ? (
+                        <div className="timeline-holiday-icon">🏖️</div>
+                      ) : (
+                        <div className="timeline-day-num">
+                          {entry.dayNumber || "—"}
+                        </div>
+                      )}
+                      <div className="timeline-day-label">
+                        {WEEKDAY_NAMES[entry.date.getDay()]}
                       </div>
-                    )}
-                    <div className="timeline-day-label">
-                      {WEEKDAY_NAMES[entry.date.getDay()]}
                     </div>
+                    <div className="timeline-date">
+                      {formatDateShort(entry.date)}
+                    </div>
+                    {entry.isToday && (
+                      <div className="today-badge">Today</div>
+                    )}
                   </div>
-                  <div className="timeline-date">
-                    {formatDateShort(entry.date)}
-                  </div>
+
                   {entry.isHoliday ? (
                     <div className="timeline-holiday-text">Holiday</div>
                   ) : entry.arrangement ? (
@@ -246,7 +252,7 @@ export default function App() {
                           <div className="timeline-seat" key={seatIdx}>
                             <img
                               className="timeline-seat-avatar"
-                              src={getAvatarUrl(av.style, av.seed, 24)}
+                              src={getAvatarUrl(av.style, av.seed, 32)}
                               alt=""
                             />
                             <span>{person}</span>
@@ -256,9 +262,6 @@ export default function App() {
                     </div>
                   ) : (
                     <div className="timeline-holiday-text">—</div>
-                  )}
-                  {entry.isToday && (
-                    <div className="today-badge">Today</div>
                   )}
                 </div>
               ))}
