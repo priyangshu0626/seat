@@ -29,6 +29,24 @@ function formatDate(date) {
   return `${WEEKDAY_NAMES[date.getDay()]}, ${date.getDate()} ${MONTH_NAMES[date.getMonth()]}`;
 }
 
+function Linkify({ text }) {
+  if (!text) return null;
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  return (
+    <div style={{ whiteSpace: "pre-wrap" }}>
+      {parts.map((part, i) =>
+        part.match(/^https?:\/\//) ? (
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-purple)", textDecoration: "underline" }} onClick={(e) => e.stopPropagation()}>
+            {part}
+          </a>
+        ) : (
+          part
+        )
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [isDark, setIsDark] = useState(() => {
     const stored = localStorage.getItem("squad-theme");
@@ -379,7 +397,7 @@ export default function App() {
                             <span className="ann-subject-tag">{ann.subject}</span>
                             <span className="ann-due-tag">📅 Due: {ann.dueDate}</span>
                           </div>
-                          {ann.details && <div className="ann-details-text">{ann.details}</div>}
+                          {ann.details && <div className="ann-details-text"><Linkify text={ann.details} /></div>}
                         </div>
                       </div>
                     );

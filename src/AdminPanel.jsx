@@ -5,6 +5,24 @@ import { AVATAR_STYLES, getAvatarUrl } from "./useFirestore";
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "12345678";
 const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
+function Linkify({ text }) {
+  if (!text) return null;
+  const parts = text.split(/(https?:\/\/[^\s]+)/g);
+  return (
+    <div style={{ whiteSpace: "pre-wrap" }}>
+      {parts.map((part, i) =>
+        part.match(/^https?:\/\//) ? (
+          <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: "var(--accent-purple)", textDecoration: "underline" }} onClick={(e) => e.stopPropagation()}>
+            {part}
+          </a>
+        ) : (
+          part
+        )
+      )}
+    </div>
+  );
+}
+
 /**
  * Admin Panel — Holidays, Avatars, Class Timetable & Mess Menu editor.
  * Password protected. Real-time Firebase sync across all connected clients.
@@ -636,7 +654,7 @@ function AnnouncementsTab({ announcements, onAdd, onRemove }) {
                 </div>
                 <div className="slot-item-title">{item.title}</div>
                 <div className="slot-item-sub">{item.subject}</div>
-                {item.details && <div style={{ fontSize: "0.8rem", marginTop: "0.2rem", color: "var(--text-muted)" }}>{item.details}</div>}
+                {item.details && <div style={{ fontSize: "0.8rem", marginTop: "0.2rem", color: "var(--text-muted)" }}><Linkify text={item.details} /></div>}
               </div>
               <button
                 className="holiday-remove"
