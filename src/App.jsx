@@ -413,6 +413,9 @@ export default function App() {
           <p>
             Cycle of {totalPerms} unique arrangements · Real-time synced schedule, mess menu & deadlines
           </p>
+          <p style={{ marginTop: "0.5rem", fontSize: "0.85em", color: "var(--text-muted)" }}>
+            Made with ❤️ by OnlyFrands. Special thanks to Partyush Phadnaik.
+          </p>
         </footer>
       </div>
 
