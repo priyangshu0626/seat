@@ -105,7 +105,7 @@ export default function App() {
   const isHolidayDisplay = holidays.includes(toDateStr(displayDate));
 
   const dayOfWeekName = FULL_WEEKDAY_NAMES[displayDate.getDay()];
-  const displayClasses = timetable[dayOfWeekName] || [];
+  const displayClasses = timetable[toDateStr(displayDate)] || [];
   const displayMessMenu = messMenu[dayOfWeekName] || {};
 
   const totalPerms = 120;

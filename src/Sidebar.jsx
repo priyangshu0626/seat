@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { WEEKDAY_NAMES, formatDateShort } from "./engine";
+import { WEEKDAY_NAMES, formatDateShort, toDateStr } from "./engine";
 import { getAvatarUrl } from "./useFirestore";
 
 const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -84,8 +84,8 @@ export default function Sidebar({
               <div className="upcoming-timeline">
                 {timeline.map((entry, idx) => {
                   const dayOfWeek = entry.date ? WEEKDAY_NAMES[entry.date.getDay()] : "";
-                  const fullDayName = DAYS_OF_WEEK[(entry.date.getDay() + 6) % 7]; // Convert Sun=0 to Mon=0 index
-                  const daySlots = timetable[fullDayName] || [];
+                  const dateString = toDateStr(entry.date);
+                  const daySlots = timetable[dateString] || [];
 
                   return (
                     <div

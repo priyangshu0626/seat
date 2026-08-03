@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { PEOPLE } from "./engine";
+import { PEOPLE, toDateStr } from "./engine";
 import { AVATAR_STYLES, getAvatarUrl } from "./useFirestore";
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "12345678";
@@ -334,7 +334,7 @@ function AvatarPicker({ person, current, onSelect, onBack }) {
 
 /* ─── Timetable / Schedule Tab ─── */
 function TimetableTab({ timetable, updateTimetableDay }) {
-  const [selectedDay, setSelectedDay] = useState("Monday");
+  const [selectedDay, setSelectedDay] = useState(toDateStr(new Date()));
   const currentSlots = timetable[selectedDay] || [];
 
   const [timeInput, setTimeInput] = useState("");
@@ -365,16 +365,15 @@ function TimetableTab({ timetable, updateTimetableDay }) {
 
   return (
     <div className="admin-tab-content">
-      <div className="day-pills">
-        {DAYS_OF_WEEK.slice(0, 5).map((d) => (
-          <button
-            key={d}
-            className={`day-pill ${selectedDay === d ? "active" : ""}`}
-            onClick={() => setSelectedDay(d)}
-          >
-            {d.slice(0, 3)}
-          </button>
-        ))}
+      <div className="admin-form-grid" style={{ marginBottom: '1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+        <label style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>Select Date to Edit:</label>
+        <input 
+          type="date" 
+          className="admin-input" 
+          style={{ maxWidth: '200px', margin: 0 }}
+          value={selectedDay}
+          onChange={(e) => setSelectedDay(e.target.value)}
+        />
       </div>
 
       <h4 className="admin-sub-title">Classes for {selectedDay}</h4>
