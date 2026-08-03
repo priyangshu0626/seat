@@ -9,8 +9,18 @@
 export const PEOPLE = ["Priyangshu", "Aryavrat", "Yatharth", "Sachin", "Gaurav"];
 export const SEAT_COUNT = PEOPLE.length;
 
+export const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+export const MONTH_NAMES = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
 // ─── Start date of the cycle (first working day) ───
 export const CYCLE_START = new Date("2026-08-04T00:00:00"); // Tuesday Aug 4, 2026
+
+export function formatDateShort(dateObj) {
+  return `${WEEKDAY_NAMES[dateObj.getDay()]}, ${dateObj.getDate()} ${MONTH_NAMES[dateObj.getMonth()]}`;
+}
 
 /**
  * Generate all permutations of an array (Heap's algorithm).
