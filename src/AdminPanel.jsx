@@ -3,10 +3,11 @@ import { PEOPLE } from "./engine";
 import { AVATAR_STYLES, getAvatarUrl } from "./useFirestore";
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD || "12345678";
+const DAYS_OF_WEEK = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 /**
- * Admin Panel — Holidays + Avatars management.
- * Password protected. Changes sync to all users via Firebase.
+ * Admin Panel — Holidays, Avatars, Class Timetable & Mess Menu editor.
+ * Password protected. Real-time Firebase sync across all connected clients.
  */
 export default function AdminPanel({
   onClose,
@@ -15,11 +16,15 @@ export default function AdminPanel({
   removeHoliday,
   avatars,
   updateAvatar,
+  timetable,
+  updateTimetableDay,
+  messMenu,
+  updateMessMenuDay,
 }) {
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [pwError, setPwError] = useState(false);
-  const [tab, setTab] = useState("holidays"); // "holidays" | "avatars"
+  const [tab, setTab] = useState("holidays"); // "holidays" | "avatars" | "timetable" | "mess"
   const [newDate, setNewDate] = useState("");
   const [editingPerson, setEditingPerson] = useState(null);
 
@@ -33,11 +38,7 @@ export default function AdminPanel({
     }
   };
 
-  // Sort holidays for display
-  const sortedHolidays = useMemo(
-    () => [...holidays].sort(),
-    [holidays]
-  );
+  const sortedHolidays = useMemo(() => [...holidays].sort(), [holidays]);
 
   const handleAddHoliday = async () => {
     if (!newDate) return;
@@ -51,7 +52,7 @@ export default function AdminPanel({
         <div className="modal admin-login" onClick={(e) => e.stopPropagation()}>
           <div className="admin-lock">🔒</div>
           <div className="modal-title">Admin Access</div>
-          <div className="modal-subtitle">Enter the admin password to continue</div>
+          <div className="modal-subtitle">Enter admin password to manage schedule & menu</div>
           <form onSubmit={handleLogin}>
             <input
               type="password"
@@ -86,8 +87,8 @@ export default function AdminPanel({
         {/* Header */}
         <div className="admin-header">
           <div>
-            <div className="modal-title">Admin Panel</div>
-            <div className="modal-subtitle">Manage holidays & avatars</div>
+            <div className="modal-title">Admin Control Panel</div>
+            <div className="modal-subtitle">Manage holidays, avatars, schedule & mess food</div>
           </div>
           <button className="admin-close" onClick={onClose} id="admin-close">
             ✕
@@ -108,11 +109,23 @@ export default function AdminPanel({
           >
             😎 Avatars
           </button>
+          <button
+            className={`admin-tab ${tab === "timetable" ? "active" : ""}`}
+            onClick={() => setTab("timetable")}
+          >
+            📚 Schedule
+          </button>
+          <button
+            className={`admin-tab ${tab === "mess" ? "active" : ""}`}
+            onClick={() => setTab("mess")}
+          >
+            🍽️ Mess Menu
+          </button>
         </div>
 
         {/* Content */}
         <div className="admin-content">
-          {tab === "holidays" ? (
+          {tab === "holidays" && (
             <HolidaysTab
               holidays={sortedHolidays}
               newDate={newDate}
@@ -120,12 +133,28 @@ export default function AdminPanel({
               onAdd={handleAddHoliday}
               onRemove={removeHoliday}
             />
-          ) : (
+          )}
+
+          {tab === "avatars" && (
             <AvatarsTab
               avatars={avatars}
               editingPerson={editingPerson}
               setEditingPerson={setEditingPerson}
               updateAvatar={updateAvatar}
+            />
+          )}
+
+          {tab === "timetable" && (
+            <TimetableTab
+              timetable={timetable}
+              updateTimetableDay={updateTimetableDay}
+            />
+          )}
+
+          {tab === "mess" && (
+            <MessMenuTab
+              messMenu={messMenu}
+              updateMessMenuDay={updateMessMenuDay}
             />
           )}
         </div>
@@ -148,7 +177,6 @@ function HolidaysTab({ holidays, newDate, setNewDate, onAdd, onRemove }) {
 
   return (
     <div className="holidays-tab">
-      {/* Add Holiday */}
       <div className="holiday-add-row">
         <input
           type="date"
@@ -167,11 +195,8 @@ function HolidaysTab({ holidays, newDate, setNewDate, onAdd, onRemove }) {
         </button>
       </div>
 
-      {/* Holiday List */}
       {holidays.length === 0 ? (
-        <div className="holiday-empty">
-          No holidays added yet. Add dates above.
-        </div>
+        <div className="holiday-empty">No holidays added yet. Add dates above.</div>
       ) : (
         <div className="holiday-list">
           {holidays.map((dateStr) => (
@@ -255,7 +280,6 @@ function AvatarPicker({ person, current, onSelect, onBack }) {
         <div className="avatar-picker-name">{person}</div>
       </div>
 
-      {/* Seed input */}
       <div className="avatar-seed-row">
         <label className="avatar-seed-label">Seed</label>
         <input
@@ -267,7 +291,6 @@ function AvatarPicker({ person, current, onSelect, onBack }) {
         />
       </div>
 
-      {/* Style Grid */}
       <div className="avatar-style-grid">
         {AVATAR_STYLES.map(({ id, label }) => (
           <button
@@ -275,11 +298,7 @@ function AvatarPicker({ person, current, onSelect, onBack }) {
             key={id}
             onClick={() => setSelectedStyle(id)}
           >
-            <img
-              src={getAvatarUrl(id, seed, 56)}
-              alt={label}
-              loading="lazy"
-            />
+            <img src={getAvatarUrl(id, seed, 56)} alt={label} loading="lazy" />
             <span>{label}</span>
           </button>
         ))}
@@ -292,6 +311,217 @@ function AvatarPicker({ person, current, onSelect, onBack }) {
       >
         ✓ Save Avatar
       </button>
+    </div>
+  );
+}
+
+/* ─── Timetable / Schedule Tab ─── */
+function TimetableTab({ timetable, updateTimetableDay }) {
+  const [selectedDay, setSelectedDay] = useState("Monday");
+  const currentSlots = timetable[selectedDay] || [];
+
+  const [timeInput, setTimeInput] = useState("");
+  const [subjectInput, setSubjectInput] = useState("");
+  const [codeInput, setCodeInput] = useState("");
+  const [roomInput, setRoomInput] = useState("");
+
+  const handleAddSlot = async () => {
+    if (!timeInput || !subjectInput) return;
+    const newSlot = {
+      time: timeInput,
+      subject: subjectInput,
+      code: codeInput || "—",
+      room: roomInput || "Room TBD",
+    };
+    const updated = [...currentSlots, newSlot];
+    await updateTimetableDay(selectedDay, updated);
+    setTimeInput("");
+    setSubjectInput("");
+    setCodeInput("");
+    setRoomInput("");
+  };
+
+  const handleRemoveSlot = async (idx) => {
+    const updated = currentSlots.filter((_, i) => i !== idx);
+    await updateTimetableDay(selectedDay, updated);
+  };
+
+  return (
+    <div className="admin-tab-content">
+      <div className="day-pills">
+        {DAYS_OF_WEEK.slice(0, 5).map((d) => (
+          <button
+            key={d}
+            className={`day-pill ${selectedDay === d ? "active" : ""}`}
+            onClick={() => setSelectedDay(d)}
+          >
+            {d.slice(0, 3)}
+          </button>
+        ))}
+      </div>
+
+      <h4 className="admin-sub-title">Classes for {selectedDay}</h4>
+
+      {/* Add Slot Form */}
+      <div className="admin-form-grid">
+        <input
+          type="text"
+          className="admin-input"
+          placeholder="Time (e.g. 09:00 - 10:30 AM)"
+          value={timeInput}
+          onChange={(e) => setTimeInput(e.target.value)}
+        />
+        <input
+          type="text"
+          className="admin-input"
+          placeholder="Subject Name"
+          value={subjectInput}
+          onChange={(e) => setSubjectInput(e.target.value)}
+        />
+        <input
+          type="text"
+          className="admin-input"
+          placeholder="Code (e.g. ECO501)"
+          value={codeInput}
+          onChange={(e) => setCodeInput(e.target.value)}
+        />
+        <input
+          type="text"
+          className="admin-input"
+          placeholder="Room (e.g. Hall A)"
+          value={roomInput}
+          onChange={(e) => setRoomInput(e.target.value)}
+        />
+        <button
+          className="btn btn-primary"
+          onClick={handleAddSlot}
+          disabled={!timeInput || !subjectInput}
+        >
+          + Add Class Slot
+        </button>
+      </div>
+
+      {/* Existing Slots */}
+      <div className="admin-items-list">
+        {currentSlots.length === 0 ? (
+          <div className="holiday-empty">No classes scheduled for {selectedDay}</div>
+        ) : (
+          currentSlots.map((slot, idx) => (
+            <div className="admin-slot-item" key={idx}>
+              <div>
+                <div className="slot-item-time">{slot.time}</div>
+                <div className="slot-item-title">{slot.subject} ({slot.code})</div>
+                <div className="slot-item-sub">Room: {slot.room}</div>
+              </div>
+              <button
+                className="holiday-remove"
+                onClick={() => handleRemoveSlot(idx)}
+                aria-label="Remove slot"
+              >
+                ✕
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Mess Menu Tab ─── */
+function MessMenuTab({ messMenu, updateMessMenuDay }) {
+  const [selectedDay, setSelectedDay] = useState("Monday");
+  const dayMenu = messMenu[selectedDay] || {
+    breakfast: "",
+    lunch: "",
+    snacks: "",
+    dinner: "",
+  };
+
+  const [breakfast, setBreakfast] = useState(dayMenu.breakfast || "");
+  const [lunch, setLunch] = useState(dayMenu.lunch || "");
+  const [snacks, setSnacks] = useState(dayMenu.snacks || "");
+  const [dinner, setDinner] = useState(dayMenu.dinner || "");
+
+  // Update local state when day changes
+  const handleSelectDay = (day) => {
+    setSelectedDay(day);
+    const m = messMenu[day] || {};
+    setBreakfast(m.breakfast || "");
+    setLunch(m.lunch || "");
+    setSnacks(m.snacks || "");
+    setDinner(m.dinner || "");
+  };
+
+  const handleSaveMenu = async () => {
+    await updateMessMenuDay(selectedDay, { breakfast, lunch, snacks, dinner });
+  };
+
+  return (
+    <div className="admin-tab-content">
+      <div className="day-pills">
+        {DAYS_OF_WEEK.map((d) => (
+          <button
+            key={d}
+            className={`day-pill ${selectedDay === d ? "active" : ""}`}
+            onClick={() => handleSelectDay(d)}
+          >
+            {d.slice(0, 3)}
+          </button>
+        ))}
+      </div>
+
+      <h4 className="admin-sub-title">Edit Mess Menu for {selectedDay}</h4>
+
+      <div className="admin-form-vertical">
+        <div className="form-group">
+          <label className="form-label">🍳 Breakfast</label>
+          <textarea
+            className="admin-textarea"
+            rows="2"
+            value={breakfast}
+            onChange={(e) => setBreakfast(e.target.value)}
+            placeholder="Breakfast items..."
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">🍲 Lunch</label>
+          <textarea
+            className="admin-textarea"
+            rows="2"
+            value={lunch}
+            onChange={(e) => setLunch(e.target.value)}
+            placeholder="Lunch items..."
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">☕ Evening Snacks</label>
+          <textarea
+            className="admin-textarea"
+            rows="2"
+            value={snacks}
+            onChange={(e) => setSnacks(e.target.value)}
+            placeholder="Snacks items..."
+          />
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">🌙 Dinner</label>
+          <textarea
+            className="admin-textarea"
+            rows="2"
+            value={dinner}
+            onChange={(e) => setDinner(e.target.value)}
+            placeholder="Dinner items..."
+          />
+        </div>
+
+        <button className="btn btn-primary" onClick={handleSaveMenu}>
+          ✓ Save {selectedDay}'s Menu
+        </button>
+      </div>
     </div>
   );
 }

@@ -10,7 +10,7 @@ export const PEOPLE = ["Priyangshu", "Aryavrat", "Yatharth", "Sachin", "Gaurav"]
 export const SEAT_COUNT = PEOPLE.length;
 
 // ─── Start date of the cycle (first working day) ───
-export const CYCLE_START = new Date("2026-08-03"); // Monday Aug 3, 2026
+export const CYCLE_START = new Date("2026-08-04T00:00:00"); // Tuesday Aug 4, 2026
 
 /**
  * Generate all permutations of an array (Heap's algorithm).
