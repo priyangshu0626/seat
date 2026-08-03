@@ -134,36 +134,42 @@ export function useAvatars() {
   return { avatars, loading, updateAvatar };
 }
 
-// ─── Class Timetable / Schedule ───
+// ─── Class Timetable / Schedule (From official BS MPP Schedule PDF) ───
 
 export const DEFAULT_TIMETABLE = {
   Monday: [
-    { time: "09:00 - 10:30 AM", subject: "Macroeconomics", code: "ECO501", room: "Hall A" },
-    { time: "10:45 - 12:15 PM", subject: "Public Policy & Governance", code: "POL502", room: "Hall B" },
-    { time: "02:00 - 03:30 PM", subject: "Data Analytics", code: "DAT503", room: "Lab 2" },
+    { time: "10:00 - 11:30 AM", subject: "Financial Accounting - FA(3)", code: "FA", room: "Prof. Vikas" },
+    { time: "12:00 - 01:30 PM", subject: "Financial Accounting - FA(4)", code: "FA", room: "Prof. Vikas" },
+    { time: "03:30 - 05:00 PM", subject: "Public Administration - PA(1)", code: "PA", room: "Prof. Manisha" },
   ],
   Tuesday: [
-    { time: "09:00 - 10:30 AM", subject: "Econometrics", code: "ECO504", room: "Hall A" },
-    { time: "10:45 - 12:15 PM", subject: "Organizational Behavior", code: "MGT501", room: "Hall C" },
-    { time: "02:00 - 03:30 PM", subject: "Financial Management", code: "FIN502", room: "Hall B" },
+    { time: "10:00 - 11:30 AM", subject: "Policy Management - PM(1)", code: "PM", room: "Prof. Anoop" },
+    { time: "12:00 - 01:30 PM", subject: "Public Administration - PA(2)", code: "PA", room: "Prof. Manisha" },
+    { time: "03:30 - 05:00 PM", subject: "Policy Management - PM(3)", code: "PM", room: "Prof. Anoop" },
   ],
   Wednesday: [
-    { time: "09:00 - 10:30 AM", subject: "Public Policy & Governance", code: "POL502", room: "Hall B" },
-    { time: "10:45 - 12:15 PM", subject: "Macroeconomics", code: "ECO501", room: "Hall A" },
-    { time: "02:00 - 03:30 PM", subject: "Leadership & Communication", code: "MGT505", room: "Auditorium" },
+    { time: "10:00 - 11:30 AM", subject: "Foundations of Management - FOM(3)", code: "FOM", room: "Prof. Rajiv" },
+    { time: "12:00 - 01:30 PM", subject: "Public Administration - PA(3)", code: "PA", room: "Prof. Manisha" },
+    { time: "03:30 - 05:00 PM", subject: "Intl Climate Finance - ICF(2)", code: "ICF", room: "Prof. Sibanjan" },
   ],
   Thursday: [
-    { time: "09:00 - 10:30 AM", subject: "Econometrics", code: "ECO504", room: "Hall A" },
-    { time: "10:45 - 12:15 PM", subject: "Financial Management", code: "FIN502", room: "Hall B" },
-    { time: "02:00 - 03:30 PM", subject: "Capstone Seminar", code: "CAP500", room: "Seminar Room" },
+    { time: "10:00 - 11:30 AM", subject: "Public Administration - PA(4)", code: "PA", room: "Prof. Manisha" },
+    { time: "12:00 - 01:30 PM", subject: "Policy Management - PM(2)", code: "PM", room: "Prof. Anoop" },
+    { time: "03:30 - 05:00 PM", subject: "Policy Management - PM(4)", code: "PM", room: "Prof. Anoop" },
   ],
   Friday: [
-    { time: "09:00 - 10:30 AM", subject: "Data Analytics", code: "DAT503", room: "Lab 2" },
-    { time: "10:45 - 12:15 PM", subject: "Leadership & Communication", code: "MGT505", room: "Auditorium" },
-    { time: "02:00 - 03:30 PM", subject: "Guest Lecture / Workshop", code: "WKS501", room: "Main Hall" },
+    { time: "10:00 - 11:30 AM", subject: "Public Administration - PA(5)", code: "PA", room: "Prof. Manisha" },
+    { time: "12:00 - 01:30 PM", subject: "Climate Change & Law - CCL-I(1)", code: "CCL-I", room: "Prof. Divya" },
+    { time: "03:30 - 05:00 PM", subject: "Climate Change & Law - CCL-I(2)", code: "CCL-I", room: "Prof. Divya" },
   ],
-  Saturday: [],
-  Sunday: [],
+  Saturday: [
+    { time: "10:00 - 11:30 AM", subject: "Climate Change & Law - CCL-I(3)", code: "CCL-I", room: "Prof. Divya" },
+    { time: "12:00 - 01:30 PM", subject: "Climate Change & Law - CCL-I(4)", code: "CCL-I", room: "Prof. Divya" },
+    { time: "06:00 - 07:30 PM", subject: "Financial Accounting - FA(1)", code: "FA", room: "Prof. Vikas" },
+  ],
+  Sunday: [
+    { time: "10:00 - 11:30 AM", subject: "Financial Accounting - FA(2)", code: "FA", room: "Prof. Vikas" },
+  ],
 };
 
 export function useTimetable() {
@@ -218,50 +224,50 @@ export function useTimetable() {
   return { timetable, loading, updateTimetableDay };
 }
 
-// ─── Mess Menu ───
+// ─── Mess Menu (From official IIM Sambalpur Mess Menu PDF) ───
 
 export const DEFAULT_MESS_MENU = {
   Monday: {
-    breakfast: "Aloo Paratha, Curd, Butter, Tea/Coffee, Fruits",
-    lunch: "Rajma Chawal, Chapati, Mix Veg, Boondi Raita, Salad",
-    snacks: "Veg Sandwich, Cold Coffee / Masala Tea",
-    dinner: "Kadhai Paneer, Dal Tadka, Rice, Chapati, Gulab Jamun",
+    breakfast: "Uttapam, Coconut Chutney + Peanut Chutney (Daily: Bread + Butter + Jam + Fruits + Milk + Tea/Coffee + Cornflakes + Sprouts + Boiled Egg)",
+    lunch: "Onion Rice, Rajma Masala, Veg Jalfrezi, Dal Bhukhara, Boondi Raita, Green Salad",
+    snacks: "Bhel Puri / Papdi Chat + Green Chutney + Dahi, Tea/Coffee",
+    dinner: "Plain Rice, Malai Kofta, Black Chana Masala Dry, Chana Daal, Roti, Chickpea Salad, Thecha, Jalebi",
   },
   Tuesday: {
-    breakfast: "Idli Sambhar, Coconut Chutney, Banana, Tea/Coffee",
-    lunch: "Chole Bhature, Jeera Rice, Salad, Pickle, Sweet Lassi",
-    snacks: "Samosa, Green Chutney, Masala Tea",
-    dinner: "Mushroom Matar, Yellow Dal, Chapati, Rice, Kheer",
+    breakfast: "Paneer Paratha, Curd (Daily: Bread + Butter + Jam + Fruits + Milk + Tea/Coffee + Cornflakes + Sprouts + Boiled Egg)",
+    lunch: "Jeera Rice, Dry Bhindi with Pyaaz, Soyabean Aloo Curry, Dal Tadka, Buttermilk, Green Salad",
+    snacks: "Schezwan Noodles / Dahi Bhalla + Imli + Green Chutney, Tea/Coffee",
+    dinner: "Plain Rice, Chole Curry, Aloo Tomato Sabzi, Navratan Dal, Poori, Onion Laccha Salad, Tomato Onion Chutney, Moong Dal Halwa",
   },
   Wednesday: {
-    breakfast: "Poha, Sev, Jalebi, Masala Tea, Milk",
-    lunch: "Paneer Butter Masala, Veg Pulao, Butter Roti, Cucumber Raita",
-    snacks: "Veg Pasta, Lemonade / Tea",
-    dinner: "Malai Kofta, Dal Makhani, Rice, Naan, Ice Cream",
+    breakfast: "Vermicelli Upma + Omelette, Red Chutney + Coconut Chutney (Daily: Bread + Butter + Jam + Fruits + Milk + Tea/Coffee + Cornflakes + Sprouts + Boiled Egg)",
+    lunch: "Plain Rice, Kadi Pakore, Aloo Bhujiaya, Sambhar, Boondi Raita, Green Salad",
+    snacks: "Mayo Sandwich / Aloo Sandwich, Tea/Coffee",
+    dinner: "Veg Biryani, Paneer Tikka Masala, Chicken Biryani, Dal Tadka, Roti, Vinegar Onion & Raita",
   },
   Thursday: {
-    breakfast: "Puri Bhaji, Fruits, Tea/Coffee, Boiled Eggs",
-    lunch: "Kadi Pakoda, Steamed Rice, Mix Veg Fry, Papad, Salad",
-    snacks: "Bhel Puri, Masala Tea/Coffee",
-    dinner: "Mix Veg Makhani, Chana Dal, Chapati, Rice, Gajar Ka Halwa",
+    breakfast: "Idly + Vada, Sambhar + Coconut Chutney (Daily: Bread + Butter + Jam + Fruits + Milk + Tea/Coffee + Cornflakes + Sprouts + Boiled Egg)",
+    lunch: "Onion Rice, Veg Jalfrezi, Karela Chips, Tomato Dal, Plain Curd, Green Salad",
+    snacks: "Veg Cutlet + Imli Chutney / Samosa Chat, Tea/Coffee",
+    dinner: "Jeera Rice, Mushroom Corn Masala, Dry Aloo Capsicum, Dal Makhani, Roti, Corn Salad, Garlic Chutney",
   },
   Friday: {
-    breakfast: "Uttapam, Tomato Chutney, Omelette, Tea/Coffee",
-    lunch: "Veg Biryani, Mirchi Ka Salan, Onion Raita, Papad",
-    snacks: "French Fries, Cold Drink / Tea",
-    dinner: "Shahi Paneer, Dal Fry, Chapati, Rice, Rasgulla",
+    breakfast: "Tarri Poha + Omelette, Matar Sabji + Sev (Daily: Bread + Butter + Jam + Fruits + Milk + Tea/Coffee + Cornflakes + Sprouts + Boiled Egg)",
+    lunch: "Lemon Rice, Kurkuri Bhindi, Lobiya Curry, Sambhar, Masala Butter Milk, Green Salad",
+    snacks: "Mysore Bonda + Coconut Chutney / Vada Pav, Tea/Coffee",
+    dinner: "Plain Rice, Kadhai Paneer (Red Gravy), Kadhai Chicken / Fish Curry, Rasam, Roti, Green Salad, Garlic Chutney, Shrikhand",
   },
   Saturday: {
-    breakfast: "Stuffed Gobhi Paratha, Curd, Pickle, Tea/Coffee",
-    lunch: "Palak Paneer, Dal Tadka, Chapati, Rice, Salad",
-    snacks: "Spring Rolls, Hot Tea",
-    dinner: "Pav Bhaji, Jeera Rice, Salad, Chocolate Brownie",
+    breakfast: "Aloo Paratha, Curd + Green Chutney (Daily: Bread + Butter + Jam + Fruits + Milk + Tea/Coffee + Cornflakes + Sprouts + Boiled Egg)",
+    lunch: "Jeera Rice, Chole, Bhature, Dal Tadka, Plain Curd, Green Salad",
+    snacks: "Red Sauce Pasta / Veg Macaroni, Tea/Coffee",
+    dinner: "Plain Rice, Dahi Bhindi, Aloo Parwal Sabzi, Dal Makhani, Roti, Chickpea Salad, Garlic Chutney",
   },
   Sunday: {
-    breakfast: "Masala Dosa, Sambhar, Coconut Chutney, Filter Coffee",
-    lunch: "Special Veg Thali, Dum Biryani, Sweet, Raita",
-    snacks: "Chana Chaat, Hot Chocolate / Tea",
-    dinner: "Paneer Tikka Masala, Dal Makhani, Butter Naan, Pulao, Dessert",
+    breakfast: "Dosa, Sambhar + Coconut Chutney (Daily: Bread + Butter + Jam + Fruits + Milk + Tea/Coffee + Cornflakes + Sprouts + Boiled Egg)",
+    lunch: "Plain Rice, Aloo Chokha, Dahi Tirkari, Arhar Dal, Plain Curd, Green Salad",
+    snacks: "Panipuri / Pav Bhaji, Tea/Coffee",
+    dinner: "Plain Rice, Paneer Butter Masala, Butter Chicken, Chana Daal, Roti, Onion Laccha Salad, Ice Cream",
   },
 };
 
