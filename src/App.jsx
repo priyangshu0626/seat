@@ -7,6 +7,7 @@ import {
   getTimeline,
   isWeekend as checkWeekend,
   isWorkingDay,
+  toDateStr,
 } from "./engine";
 import { useHolidays, useAvatars, getAvatarUrl } from "./useFirestore";
 import AdminPanel from "./AdminPanel";
@@ -69,9 +70,7 @@ export default function App() {
     [holidays, loading]
   );
   const isWeekendToday = checkWeekend(today);
-  const isHolidayToday = holidays.includes(
-    today.toISOString().split("T")[0]
-  );
+  const isHolidayToday = holidays.includes(toDateStr(today));
 
   const totalPerms = 120;
 
