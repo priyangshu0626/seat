@@ -153,8 +153,6 @@ export function toDateStr(date) {
  * Check if a date is a working day (Mon–Fri, not a holiday).
  */
 export function isWorkingDay(date, holidays = []) {
-  const day = date.getDay();
-  if (day === 0 || day === 6) return false;
   const dateStr = toDateStr(date);
   return !holidays.includes(dateStr);
 }
@@ -170,8 +168,8 @@ export function isHoliday(date, holidays = []) {
  * Check if a date is a weekend.
  */
 export function isWeekend(date) {
-  const day = date.getDay();
-  return day === 0 || day === 6;
+  // All 7 days are working days for this schedule
+  return false;
 }
 
 /**
